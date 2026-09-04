@@ -2,9 +2,6 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -21,7 +18,7 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack: (config, {dev}) => {
-    // HMR is disabled in AI Studio via DISABLE_HMR env var.
+    // HMR is disabled in AI Studio via DISABLE_HMR env var (webpack mode).
     // Do not modify - file watching is disabled to prevent flickering during agent edits.
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {
@@ -30,6 +27,9 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  // Turbopack is the default bundler in Next.js 16; the webpack hook above
+  // only applies when running with `next dev --webpack` / `next build --webpack`.
+  turbopack: {},
 };
 
 export default nextConfig;

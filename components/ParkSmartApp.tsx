@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import type { LucideIcon } from 'lucide-react';
 import { 
   Search, MapPin, BatteryCharging, Accessibility, 
   Navigation, Clock, ShieldCheck, Star, Heart, 
-  TrendingUp, Users, CheckCircle2, Globe,
-  Facebook, Twitter, Youtube, Instagram, Music2,
+  TrendingUp, Globe,
+  AtSign, Play, Camera, Send, Music2,
   ChevronRight, LocateFixed, Zap, Shield, Warehouse, Loader2, X, Sparkles,
   Sun, Moon
 } from 'lucide-react';
@@ -116,7 +117,7 @@ const GlassCard = ({ children, className = "", isLight = false }: { children: Re
   </motion.div>
 );
 
-const FeatureCard = ({ icon: Icon, title, desc, delay, isLight }: any) => (
+const FeatureCard = ({ icon: Icon, title, desc, delay, isLight }: { icon: LucideIcon; title: string; desc: string; delay: number; isLight: boolean }) => (
   <motion.div
     initial={{ opacity: 0, y: 30 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -985,7 +986,7 @@ export default function EasyParkApp() {
               <div className="flex items-center gap-6">
                 <span className={`text-[10px] uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-white/40'}`}>Follow Us</span>
                 <div className="flex gap-4">
-                  {[Music2, Facebook, Twitter, Youtube, Instagram].map((Icon, i) => (
+                  {[Music2, AtSign, Play, Camera, Send].map((Icon, i) => (
                     <motion.a 
                       key={i}
                       href="#"

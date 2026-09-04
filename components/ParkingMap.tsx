@@ -2,6 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import type LType from 'leaflet';
+import type {
+  MapContainerProps,
+  TileLayerProps,
+  MarkerProps,
+  PopupProps,
+} from 'react-leaflet';
 import { Navigation, ExternalLink, Loader2 } from 'lucide-react';
 
 interface ParkingSpot {
@@ -28,6 +34,24 @@ interface ParkingMapProps {
   setSelectedSpotId: (id: number) => void;
 }
 
+function MapController({
+  center,
+  zoom,
+  useMap,
+}: {
+  center: [number, number];
+  zoom: number;
+  useMap: () => LType.Map;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (map) {
+      map.flyTo(center, zoom, { duration: 1.5 });
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
 export default function ParkingMap({
   mapCenter,
   mapZoom,
@@ -37,11 +61,11 @@ export default function ParkingMap({
 }: ParkingMapProps) {
   const [mapComponents, setMapComponents] = useState<{
     L: typeof LType;
-    MapContainer: React.ComponentType<any>;
-    TileLayer: React.ComponentType<any>;
-    Marker: React.ComponentType<any>;
-    Popup: React.ComponentType<any>;
-    useMap: () => any;
+    MapContainer: React.ComponentType<MapContainerProps>;
+    TileLayer: React.ComponentType<TileLayerProps>;
+    Marker: React.ComponentType<MarkerProps>;
+    Popup: React.ComponentType<PopupProps>;
+    useMap: () => LType.Map;
   } | null>(null);
 
   useEffect(() => {
@@ -74,16 +98,6 @@ export default function ParkingMap({
 
   const { L, MapContainer, TileLayer, Marker, Popup, useMap } = mapComponents;
 
-  function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
-    const map = useMap();
-    useEffect(() => {
-      if (map) {
-        map.flyTo(center, zoom, { duration: 1.5 });
-      }
-    }, [center, zoom, map]);
-    return null;
-  }
-
   const createMarkerIcon = (isSelected: boolean, available: number) => {
     const color = available < 10 ? '#ef4444' : '#3b82f6';
     return L.divIcon({
@@ -114,7 +128,7 @@ export default function ParkingMap({
 
   return (
     <MapContainer center={mapCenter} zoom={mapZoom} className="h-full w-full">
-      <MapController center={mapCenter} zoom={mapZoom} />
+      <MapController center={mapCenter} zoom={mapZoom} useMap={useMap} />
       <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
       {filteredSpots.map((spot) => (
         <Marker

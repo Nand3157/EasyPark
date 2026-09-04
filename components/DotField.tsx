@@ -58,7 +58,18 @@ const DotField: React.FC<DotFieldProps> = memo(({
   const sizeRef = useRef({ w: 0, h: 0, offsetX: 0, offsetY: 0 });
   const glowOpacity = useRef(0);
   const engagement = useRef(0);
-  const propsRef = useRef<Record<string, any>>({});
+  const propsRef = useRef({
+    dotRadius: 0,
+    dotSpacing: 0,
+    cursorRadius: 0,
+    cursorForce: 0,
+    bulgeOnly: false,
+    bulgeStrength: 0,
+    sparkle: false,
+    waveAmplitude: 0,
+    gradientFrom: '',
+    gradientTo: '',
+  });
   propsRef.current = { dotRadius, dotSpacing, cursorRadius, cursorForce, bulgeOnly, bulgeStrength, sparkle, waveAmplitude, gradientFrom, gradientTo };
   const rebuildRef = useRef<(() => void) | null>(null);
   const glowIdRef = useRef('dot-field-glow-gradient');

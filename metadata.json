@@ -1,0 +1,6 @@
+{
+  "name": "EasyPark",
+  "description": "A premium, production-ready React app for parking search and discovery with liquid glass aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -11,102 +11,151 @@
     url("https://db.onlinewebfonts.com/t/a64ff11d2c24584c767f6257e880dc65.svg#Helvetica Regular")format("svg");
 }
 
+/* ---------------------------------- */
+/* EasyPark design tokens (Tailwind v4) */
+/* ---------------------------------- */
+@theme {
+  --font-sans: "Helvetica Regular", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+
+  --shadow-card: 0 20px 45px -24px rgb(15 23 42 / 0.22);
+  --shadow-card-dark: 0 20px 50px -20px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 28px 60px -24px rgb(15 23 42 / 0.28);
+  --shadow-lift-dark: 0 28px 70px -20px rgb(0 0 0 / 0.65);
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* App theme is driven by a `.dark` / `.light` wrapper class so that
+   `dark:` variants follow the in-app toggle instead of the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --font-sans: "Helvetica Regular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-sans);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Glassmorphism utility for Dark Theme */
-.dark .liquid-glass {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  position: relative;
-  overflow: hidden;
+/* ---------- Surfaces (theme-aware quiet cards) ---------- */
+.surface {
+  border-radius: 1.5rem;
+  border: 1px solid transparent;
+  transition:
+    transform 0.25s var(--ease-out-expo),
+    box-shadow 0.25s var(--ease-out-expo),
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+.dark .surface {
+  background: rgb(255 255 255 / 0.045);
+  border-color: rgb(255 255 255 / 0.09);
+  box-shadow: var(--shadow-card-dark);
+}
+.light .surface {
+  background: #ffffff;
+  border-color: rgb(15 23 42 / 0.08);
+  box-shadow: var(--shadow-card);
+}
+.surface-hover:hover {
+  transform: translateY(-4px);
+}
+.dark .surface-hover:hover {
+  box-shadow: var(--shadow-lift-dark);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.light .surface-hover:hover {
+  box-shadow: var(--shadow-lift);
+  border-color: rgb(15 23 42 / 0.14);
+}
+.surface-blur {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
-/* Glassmorphism utility for Light Theme */
-.light .liquid-glass {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  position: relative;
-  overflow: hidden;
+/* ---------- Text tones ---------- */
+.t-secondary {
+  color: rgb(71 85 105);
+}
+.dark .t-secondary {
+  color: rgb(255 255 255 / 0.65);
+}
+.t-tertiary {
+  color: rgb(100 116 139);
+}
+.dark .t-tertiary {
+  color: rgb(255 255 255 / 0.45);
 }
 
-.dark .liquid-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.4px;
-  background: linear-gradient(
-      180deg,
-      rgba(255,255,255,.35) 0%,
-      rgba(255,255,255,.1) 20%,
-      rgba(255,255,255,0) 40%,
-      rgba(255,255,255,0) 60%,
-      rgba(255,255,255,.1) 80%,
-      rgba(255,255,255,.35) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box,
-               linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+/* ---------- Accessibility ---------- */
+:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.8);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
-.light .liquid-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-      180deg,
-      rgba(255,255,255,0.9) 0%,
-      rgba(255,255,255,0.4) 30%,
-      rgba(255,255,255,0.1) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box,
-               linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.65rem 1.1rem;
+  border-radius: 9999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+.skip-link:focus-visible {
+  top: 1rem;
+  outline-color: #fff;
 }
 
-/* Leaflet Dark Mode adjustment - ONLY apply to tile pane so popups, markers, and UI controls stay crisp and un-inverted */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Leaflet ---------- */
+/* Dark mode: invert ONLY the tile pane so markers, popups and controls stay crisp. */
 .dark .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
 }
-
 .light .leaflet-tile-pane {
   filter: none;
 }
 
-/* Custom Leaflet Popup Styling */
 .leaflet-popup-content-wrapper {
   background: transparent !important;
   box-shadow: none !important;
   padding: 0 !important;
   border-radius: 1rem !important;
 }
-
 .leaflet-popup-tip-container {
   display: none !important;
 }
-
 .leaflet-popup-content {
   margin: 0 !important;
   line-height: inherit !important;
 }
-
 .leaflet-container a.leaflet-popup-close-button {
   color: #94a3b8 !important;
   padding: 8px !important;
@@ -115,6 +164,7 @@ body {
   color: #cbd5e1 !important;
 }
 
+/* ---------- Utilities ---------- */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -127,146 +177,4 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-}
-
-.border-glow-card {
-  --edge-proximity: 0;
-  --cursor-angle: 45deg;
-  --edge-sensitivity: 30;
-  --color-sensitivity: calc(var(--edge-sensitivity) + 20);
-  --border-radius: 28px;
-  --glow-padding: 40px;
-  --cone-spread: 25;
-
-  position: relative;
-  border-radius: var(--border-radius);
-  isolation: isolate;
-  transform: translate3d(0, 0, 0.01px);
-  display: grid;
-  border: 1px solid rgb(255 255 255 / 15%);
-  background: var(--card-bg, #120F17);
-  overflow: visible;
-  box-shadow:
-    rgba(0, 0, 0, 0.1) 0px 1px 2px,
-    rgba(0, 0, 0, 0.1) 0px 2px 4px,
-    rgba(0, 0, 0, 0.1) 0px 4px 8px,
-    rgba(0, 0, 0, 0.1) 0px 8px 16px,
-    rgba(0, 0, 0, 0.1) 0px 16px 32px,
-    rgba(0, 0, 0, 0.1) 0px 32px 64px;
-}
-
-.border-glow-card::before,
-.border-glow-card::after,
-.border-glow-card > .edge-light {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  transition: opacity 0.25s ease-out;
-  z-index: -1;
-}
-
-.border-glow-card:not(:hover):not(.sweep-active)::before,
-.border-glow-card:not(:hover):not(.sweep-active)::after,
-.border-glow-card:not(:hover):not(.sweep-active) > .edge-light {
-  opacity: 0;
-  transition: opacity 0.75s ease-in-out;
-}
-
-/* colored mesh-gradient border */
-.border-glow-card::before {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--card-bg, #120F17) 0 100%) padding-box,
-    linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
-    var(--gradient-one, radial-gradient(at 80% 55%, hsla(268, 100%, 76%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-two, radial-gradient(at 69% 34%, hsla(349, 100%, 74%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-three, radial-gradient(at 8% 6%, hsla(136, 100%, 78%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-four, radial-gradient(at 41% 38%, hsla(192, 100%, 64%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-five, radial-gradient(at 86% 85%, hsla(186, 100%, 74%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-six, radial-gradient(at 82% 18%, hsla(52, 100%, 65%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(12, 100%, 72%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-base, linear-gradient(#c299ff 0 100%)) border-box;
-
-  opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
-
-  mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center,
-      black calc(var(--cone-spread) * 1%),
-      transparent calc((var(--cone-spread) + 15) * 1%),
-      transparent calc((100 - var(--cone-spread) - 15) * 1%),
-      black calc((100 - var(--cone-spread)) * 1%)
-    );
-}
-
-/* colored mesh-gradient background fill near edges */
-.border-glow-card::after {
-  border: 1px solid transparent;
-  background:
-    var(--gradient-one, radial-gradient(at 80% 55%, hsla(268, 100%, 76%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-two, radial-gradient(at 69% 34%, hsla(349, 100%, 74%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-three, radial-gradient(at 8% 6%, hsla(136, 100%, 78%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-four, radial-gradient(at 41% 38%, hsla(192, 100%, 64%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-five, radial-gradient(at 86% 85%, hsla(186, 100%, 74%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-six, radial-gradient(at 82% 18%, hsla(52, 100%, 65%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(12, 100%, 72%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-base, linear-gradient(#c299ff 0 100%)) padding-box;
-
-  mask-image:
-    linear-gradient(to bottom, black, black),
-    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
-    radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
-    radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
-    radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
-    radial-gradient(ellipse at 33% 66%, black 5%, transparent 40%),
-    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
-
-  mask-composite: subtract, add, add, add, add, add;
-  opacity: calc(var(--fill-opacity, 0.5) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
-  mix-blend-mode: soft-light;
-}
-
-/* outer glow layer */
-.border-glow-card > .edge-light {
-  inset: calc(var(--glow-padding) * -1);
-  pointer-events: none;
-  z-index: 1;
-
-  mask-image:
-    conic-gradient(
-      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
-    );
-
-  opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
-  mix-blend-mode: plus-lighter;
-}
-
-.border-glow-card > .edge-light::before {
-  content: "";
-  position: absolute;
-  inset: var(--glow-padding);
-  border-radius: inherit;
-  box-shadow:
-    inset 0 0 0 1px var(--glow-color, hsl(40deg 80% 80% / 100%)),
-    inset 0 0 1px 0 var(--glow-color-60, hsl(40deg 80% 80% / 60%)),
-    inset 0 0 3px 0 var(--glow-color-50, hsl(40deg 80% 80% / 50%)),
-    inset 0 0 6px 0 var(--glow-color-40, hsl(40deg 80% 80% / 40%)),
-    inset 0 0 15px 0 var(--glow-color-30, hsl(40deg 80% 80% / 30%)),
-    inset 0 0 25px 2px var(--glow-color-20, hsl(40deg 80% 80% / 20%)),
-    inset 0 0 50px 2px var(--glow-color-10, hsl(40deg 80% 80% / 10%)),
-    0 0 1px 0 var(--glow-color-60, hsl(40deg 80% 80% / 60%)),
-    0 0 3px 0 var(--glow-color-50, hsl(40deg 80% 80% / 50%)),
-    0 0 6px 0 var(--glow-color-40, hsl(40deg 80% 80% / 40%)),
-    0 0 15px 0 var(--glow-color-30, hsl(40deg 80% 80% / 30%)),
-    0 0 25px 2px var(--glow-color-20, hsl(40deg 80% 80% / 20%)),
-    0 0 50px 2px var(--glow-color-10, hsl(40deg 80% 80% / 10%));
-}
-
-.border-glow-inner {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: visible;
-  z-index: 1;
 }

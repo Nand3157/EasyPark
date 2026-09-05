@@ -153,6 +153,7 @@ export default function EasyParkApp() {
   const [parkingData, setParkingData] = useState<ParkingSpot[]>(INITIAL_SPOTS);
   const [activeFilter, setActiveFilter] = useState("Nearby");
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [reservedIds, setReservedIds] = useState<number[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);
@@ -162,6 +163,12 @@ export default function EasyParkApp() {
   // Toggle favorite
   const toggleFavorite = (id: number) => {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+  };
+
+  // Jump to the spots section with a filter applied
+  const goToFilter = (filter: string) => {
+    setActiveFilter(filter);
+    document.getElementById("spots")?.scrollIntoView({ behavior: "smooth" });
   };
 
   // Perform geocoding search
@@ -299,21 +306,7 @@ export default function EasyParkApp() {
           />
         </div>
 
-        {/* Fixed City Night Traffic Video Background */}
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline
-          className={`fixed inset-0 w-full h-full object-cover z-[0] transition-all duration-500 ${
-            isLight 
-              ? 'opacity-15 filter brightness-110 contrast-110 mix-blend-multiply' 
-              : 'opacity-30 filter contrast-125 brightness-90'
-          }`}
-        >
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-car-driving-through-a-city-at-night-41571-large.mp4" type="video/mp4" />
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-hyper-lapse-of-a-traffic-at-night-42861-large.mp4" type="video/mp4" />
-        </video>
+        {/* Ambient overlay gradient (video backdrop removed: source retired) */}
         <div className={`fixed inset-0 z-[1] pointer-events-none transition-all duration-500 ${
           isLight 
             ? 'bg-gradient-to-b from-white/70 via-blue-50/40 to-slate-100/80' 
@@ -358,6 +351,7 @@ export default function EasyParkApp() {
                     : 'liquid-glass text-amber-300 border-white/20 hover:bg-white/10'
                 }`}
                 title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+                aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
               >
                 {isLight ? <Sun size={18} /> : <Moon size={18} />}
               </motion.button>
@@ -365,13 +359,14 @@ export default function EasyParkApp() {
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={() => document.getElementById("search")?.scrollIntoView({ behavior: "smooth" })}
                 className={`px-5 py-2 rounded-full text-xs md:text-sm font-semibold transition-all cursor-pointer border ${
                   isLight 
                     ? 'bg-blue-600 text-white border-blue-600 shadow-md hover:bg-blue-700' 
                     : 'liquid-glass text-white border-white/15 hover:bg-white/10'
                 }`}
               >
-                Sign In
+                Find Parking
               </motion.button>
             </div>
           </nav>
@@ -439,6 +434,7 @@ export default function EasyParkApp() {
                 </div>
                 <input 
                   type="text" 
+                  aria-label="Search for parking near a destination"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search destination, mall, airport, city (e.g. Vadodara, Mumbai)..."
@@ -449,6 +445,7 @@ export default function EasyParkApp() {
                 {searchQuery && (
                   <button 
                     type="button" 
+                    aria-label="Clear search"
                     onClick={() => setSearchQuery("")}
                     className={`p-2 transition-colors flex items-center justify-center ${isLight ? 'text-slate-400 hover:text-slate-700' : 'text-white/40 hover:text-white'}`}
                   >
@@ -564,6 +561,7 @@ export default function EasyParkApp() {
               <div className="absolute top-6 left-6 flex flex-col gap-3 z-[400]">
                 <motion.button 
                   title="Locate My Position"
+                  aria-label="Use my current location"
                   onClick={handleCurrentLocation}
                   whileHover={{ scale: 1.1, x: 5 }}
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg border cursor-pointer ${
@@ -575,14 +573,29 @@ export default function EasyParkApp() {
                   <LocateFixed size={20} className="text-blue-500" />
                 </motion.button>
                 
-                {[Zap, Warehouse, Accessibility, TrendingUp, Clock].map((Icon, i) => (
+                {[
+                  { Icon: Zap, filter: "EV Charging", label: "Filter: EV charging" },
+                  { Icon: Warehouse, filter: "Covered Parking", label: "Filter: covered parking" },
+                  { Icon: Accessibility, filter: "Handicap Access", label: "Filter: handicap access" },
+                  { Icon: TrendingUp, filter: "Cheapest", label: "Sort: cheapest first" },
+                  { Icon: Clock, filter: "24 Hours", label: "Filter: open 24 hours" },
+                ].map(({ Icon, filter, label }) => (
                   <motion.button 
-                    key={i}
+                    key={filter}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={activeFilter === filter}
+                    onClick={() => {
+                      setActiveFilter(filter);
+                      document.getElementById("spots")?.scrollIntoView({ behavior: "smooth" });
+                    }}
                     whileHover={{ scale: 1.1, x: 5 }}
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md border cursor-pointer ${
-                      isLight 
-                        ? 'bg-white/90 text-slate-700 border-slate-200 hover:bg-white' 
-                        : 'liquid-glass text-white/80 hover:text-white border-white/10 hover:bg-white/10'
+                      activeFilter === filter
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30'
+                        : (isLight 
+                          ? 'bg-white/90 text-slate-700 border-slate-200 hover:bg-white' 
+                          : 'liquid-glass text-white/80 hover:text-white border-white/10 hover:bg-white/10')
                     }`}
                   >
                     <Icon size={20} />
@@ -612,6 +625,7 @@ export default function EasyParkApp() {
                           </div>
                           <button 
                             onClick={() => setSelectedSpotId(null)}
+                            aria-label="Close selected spot details"
                             className={`p-1.5 rounded-full transition-colors ${isLight ? 'hover:bg-slate-100 text-slate-400 hover:text-slate-700' : 'hover:bg-white/10 text-white/40 hover:text-white'}`}
                           >
                             <X size={18} />
@@ -700,6 +714,8 @@ export default function EasyParkApp() {
                       </div>
                       <motion.button 
                         onClick={() => toggleFavorite(spot.id)}
+                        aria-label={favorites.includes(spot.id) ? `Remove ${spot.name} from favorites` : `Save ${spot.name} to favorites`}
+                        aria-pressed={favorites.includes(spot.id)}
                         whileTap={{ scale: 0.8 }} 
                         className={`transition-colors cursor-pointer ${favorites.includes(spot.id) ? 'text-red-500' : (isLight ? 'text-slate-300 hover:text-red-500' : 'text-white/20 hover:text-red-500')}`}
                       >
@@ -743,7 +759,7 @@ export default function EasyParkApp() {
                           setMapCenter([spot.lat, spot.lng]);
                           setMapZoom(16);
                           setSelectedSpotId(spot.id);
-                          window.scrollTo({ top: 500, behavior: 'smooth' });
+                          document.getElementById("map")?.scrollIntoView({ behavior: 'smooth' });
                         }}
                         className={`py-3 px-2 rounded-2xl text-xs font-semibold transition-colors border cursor-pointer flex items-center justify-center gap-1 ${
                           isLight 
@@ -767,15 +783,18 @@ export default function EasyParkApp() {
                       </a>
                       <button 
                         onClick={() => {
-                          alert(`Spot reserved at ${spot.name}! Confirmation code sent to your account.`);
+                          setReservedIds((prev) => prev.includes(spot.id) ? prev : [...prev, spot.id]);
                         }}
+                        aria-live="polite"
                         className={`py-3 px-2 rounded-2xl text-xs font-bold transition-all cursor-pointer shadow-lg flex items-center justify-center ${
-                          isLight 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20' 
-                            : 'bg-white text-black hover:bg-blue-50 shadow-white/10'
+                          reservedIds.includes(spot.id)
+                            ? 'bg-emerald-600 text-white shadow-emerald-500/20'
+                            : (isLight 
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20' 
+                              : 'bg-white text-black hover:bg-blue-50 shadow-white/10')
                         }`}
                       >
-                        Reserve
+                        {reservedIds.includes(spot.id) ? "✓ Reserved" : "Reserve"}
                       </button>
                     </div>
                   </GlassCard>
@@ -908,12 +927,13 @@ export default function EasyParkApp() {
                   className={`px-10 py-4.5 rounded-full text-lg font-bold shadow-xl transition-colors cursor-pointer ${
                     isLight ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20' : 'bg-white text-black hover:bg-blue-50 shadow-white/10'
                   }`}
-                  onClick={() => window.scrollTo({ top: 300, behavior: 'smooth' })}
+                  onClick={() => document.getElementById("search")?.scrollIntoView({ behavior: 'smooth' })}
                 >
                   Find Parking
                 </motion.button>
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
+                  onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: 'smooth' })}
                   className={`px-10 py-4.5 rounded-full text-lg font-bold border cursor-pointer ${
                     isLight ? 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200' : 'liquid-glass text-white border-white/15'
                   }`}
@@ -951,29 +971,29 @@ export default function EasyParkApp() {
                 <div>
                   <h4 className={`text-sm uppercase tracking-wider font-medium mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>Explore</h4>
                   <ul className={`text-xs space-y-2.5 ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Find Parking</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Live Availability</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">EV Charging</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Monthly Parking</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Smart Navigation</li>
+                    <li><button onClick={() => document.getElementById("search")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-blue-600 transition-colors cursor-pointer">Find Parking</button></li>
+                    <li><button onClick={() => goToFilter("Open Now")} className="hover:text-blue-600 transition-colors cursor-pointer">Live Availability</button></li>
+                    <li><button onClick={() => goToFilter("EV Charging")} className="hover:text-blue-600 transition-colors cursor-pointer">EV Charging</button></li>
+                    <li><button onClick={() => goToFilter("Covered Parking")} className="hover:text-blue-600 transition-colors cursor-pointer">Covered Parking</button></li>
+                    <li><button onClick={() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth" })} className="hover:text-blue-600 transition-colors cursor-pointer">Smart Navigation</button></li>
                   </ul>
                 </div>
                 <div>
                   <h4 className={`text-sm uppercase tracking-wider font-medium mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>Company</h4>
                   <ul className={`text-xs space-y-2.5 ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">About</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Careers</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Partners</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Newsroom</li>
+                    <li>About</li>
+                    <li>Careers</li>
+                    <li>Partners</li>
+                    <li>Newsroom</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className={`text-sm uppercase tracking-wider font-medium mb-4 ${isLight ? 'text-slate-900' : 'text-white'}`}>Support</h4>
                   <ul className={`text-xs space-y-2.5 ${isLight ? 'text-slate-600' : 'text-white/50'}`}>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Contact</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Privacy Policy</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Terms of Service</li>
-                    <li className="hover:text-blue-600 transition-colors cursor-pointer">Report Issue</li>
+                    <li>Contact</li>
+                    <li>Privacy Policy</li>
+                    <li>Terms of Service</li>
+                    <li>Report Issue</li>
                   </ul>
                 </div>
               </div>
@@ -986,10 +1006,20 @@ export default function EasyParkApp() {
               <div className="flex items-center gap-6">
                 <span className={`text-[10px] uppercase tracking-widest ${isLight ? 'text-slate-500' : 'text-white/40'}`}>Follow Us</span>
                 <div className="flex gap-4">
-                  {[Music2, AtSign, Play, Camera, Send].map((Icon, i) => (
+                  {[
+                    { Icon: Music2, label: "EasyPark on TikTok", href: "https://www.tiktok.com/" },
+                    { Icon: AtSign, label: "EasyPark on X", href: "https://x.com/" },
+                    { Icon: Play, label: "EasyPark on YouTube", href: "https://www.youtube.com/" },
+                    { Icon: Camera, label: "EasyPark on Instagram", href: "https://www.instagram.com/" },
+                    { Icon: Send, label: "EasyPark on Telegram", href: "https://telegram.org/" },
+                  ].map(({ Icon, label, href }) => (
                     <motion.a 
-                      key={i}
-                      href="#"
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      title={label}
                       whileHover={{ y: -3 }}
                       className={`transition-colors ${isLight ? 'text-slate-600 hover:text-blue-600' : 'text-white/80 hover:text-white'}`}
                     >

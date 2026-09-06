@@ -12,6 +12,7 @@ import { Features } from './sections/features';
 import { Process } from './sections/process';
 import { Closing } from './sections/closing';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { isNumberArray, isTheme, usePersistentState } from '@/hooks/use-persistent-state';
 import {
   INITIAL_SPOTS,
   PRESET_LOCATIONS,
@@ -22,15 +23,15 @@ import {
 import { scrollToSection } from '@/lib/utils';
 
 export default function EasyParkApp() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = usePersistentState<'dark' | 'light'>('easypark:theme', 'dark', isTheme);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentLocationName, setCurrentLocationName] = useState("Bengaluru, Karnataka, India");
   const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
   const [mapZoom, setMapZoom] = useState(14);
   const [parkingData, setParkingData] = useState<ParkingSpot[]>(INITIAL_SPOTS);
   const [activeFilter, setActiveFilter] = useState("Nearby");
-  const [favorites, setFavorites] = useState<number[]>([]);
-  const [reservedIds, setReservedIds] = useState<number[]>([]);
+  const [favorites, setFavorites] = usePersistentState<number[]>('easypark:favorites', [], isNumberArray);
+  const [reservedIds, setReservedIds] = usePersistentState<number[]>('easypark:reservations', [], isNumberArray);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);

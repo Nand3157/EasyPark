@@ -14,7 +14,7 @@ const ENDPOINTS = [
 ];
 const RADIUS_METERS = 3000;
 const RESULT_LIMIT = 40;
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 15000;
 
 interface OverpassTags {
   name?: string;
@@ -104,6 +104,9 @@ export async function fetchLiveParking(lat: number, lng: number): Promise<Parkin
     try {
       const res = await fetch(endpoint, {
         method: "POST",
+        // Form-encoded body: required by overpass-api.de, and CORS-safelisted
+        // so browsers skip the preflight.
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
         body: `data=${encodeURIComponent(query)}`,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });

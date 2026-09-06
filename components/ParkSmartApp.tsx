@@ -22,6 +22,7 @@ import {
 } from '@/lib/parking';
 import { scrollToSection } from '@/lib/utils';
 import { fetchLiveParking } from '@/lib/overpass';
+import { isBlockedError, resolveUserPosition, type LocateOutcome } from '@/lib/location';
 
 export default function EasyParkApp() {
   const [theme, setTheme] = usePersistentState<'dark' | 'light'>('easypark:theme', 'dark', isTheme);
@@ -120,70 +121,58 @@ export default function EasyParkApp() {
     }
   };
 
-  const handleCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setSearchError("Geolocation is not supported by your browser.");
-      return;
-    }
-
+  // Locate the user: GPS first, IP approximation on transient GPS failure.
+  // Reports "blocked" for hard blocks so auto-locate never re-prompts.
+  const locateUser = useCallback(async (mode: "auto" | "manual"): Promise<LocateOutcome> => {
     setIsSearching(true);
     setSearchError(null);
+    try {
+      const pos = await resolveUserPosition(mode === "manual");
+      if (pos.method === "ip") {
+        const label = pos.city ? `Approximate Location (${pos.city})` : "Approximate Location";
+        await loadSpots(pos.lat, pos.lng, label, 12);
+      } else {
+        await loadSpots(pos.lat, pos.lng, "Your Current Location", 15);
+      }
+      return "ok";
+    } catch (err) {
+      console.error("Location error:", err);
+      setSearchError(err instanceof Error ? err.message : "Could not determine your location.");
+      return isBlockedError(err) ? "blocked" : "ok";
+    } finally {
+      setIsSearching(false);
+    }
+  }, [loadSpots]);
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          await loadSpots(pos.coords.latitude, pos.coords.longitude, "Your Current Location", 15);
-        } finally {
-          setIsSearching(false);
-        }
-      },
-      (err) => {
-        console.error("GPS error:", err);
-        setSearchError("Could not access your location. Please check browser permissions.");
-        setIsSearching(false);
-      },
-      { timeout: 10000 }
-    );
+  const handleCurrentLocation = () => {
+    void locateUser("manual");
   };
 
   const filteredSpots = applySpotFilter(parkingData, activeFilter);
 
-  // On first visit, ask once for the user's location to show real nearby lots.
-  // The prompt is never repeated: the answer is remembered in localStorage.
+  // On first paint, try to locate the user for real nearby lots.
+  // Repeats every visit unless the browser hard-blocked the request.
   const autoLocateAttempted = useRef(false);
   useEffect(() => {
-    if (autoLocateAttempted.current || !navigator.geolocation) return;
+    if (autoLocateAttempted.current) return;
     autoLocateAttempted.current = true;
-    const markAsked = () => {
-      try {
-        window.localStorage.setItem("easypark:geo-asked", "1");
-      } catch {
-        // Storage unavailable — still only attempt once per mount.
-      }
-    };
-    let alreadyAsked = false;
+    let blocked = false;
     try {
-      alreadyAsked = window.localStorage.getItem("easypark:geo-asked") === "1";
+      blocked = window.localStorage.getItem("easypark:geo-blocked") === "1";
     } catch {
-      // Storage unavailable — proceed with the one-time attempt.
+      // Storage unavailable — still attempt once per mount.
     }
-    if (alreadyAsked) return;
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        markAsked();
-        setIsSearching(true);
+    if (blocked) return;
+    void locateUser("auto").then((outcome) => {
+      if (outcome === "blocked") {
         try {
-          await loadSpots(pos.coords.latitude, pos.coords.longitude, "Your Current Location", 15);
-        } finally {
-          setIsSearching(false);
+          window.localStorage.setItem("easypark:geo-blocked", "1");
+        } catch {
+          // Storage unavailable — nothing to remember.
         }
-      },
-      () => {
-        markAsked();
-      },
-      { timeout: 10000 }
-    );
-  }, [loadSpots]);
+      }
+    });
+  }, [locateUser]);
 
   return (
     <div id="top" className={theme}>
@@ -237,6 +226,7 @@ export default function EasyParkApp() {
             activeFilter={activeFilter}
             onSelectFilter={goToFilter}
             onLocate={handleCurrentLocation}
+            locating={isSearching}
             dataSource={dataSource}
           />
 

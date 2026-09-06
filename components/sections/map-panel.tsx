@@ -27,6 +27,7 @@ interface MapPanelProps {
   activeFilter: string;
   onSelectFilter: (filter: string) => void;
   onLocate: () => void;
+  locating: boolean;
   dataSource: "demo" | "live" | "demo-fallback";
 }
 
@@ -49,6 +50,7 @@ export function MapPanel({
   activeFilter,
   onSelectFilter,
   onLocate,
+  locating,
   dataSource,
 }: MapPanelProps) {
   const selectedSpot = selectedSpotId
@@ -71,10 +73,15 @@ export function MapPanel({
             <button
               title="Locate my position"
               aria-label="Use my current location"
+              aria-busy={locating}
               onClick={onLocate}
               className="flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-slate-950/10 bg-white/90 text-slate-800 shadow-lg backdrop-blur-xl transition-transform hover:scale-105 md:size-12 dark:border-white/10 dark:bg-slate-950/70 dark:text-white"
             >
-              <LocateFixed size={20} className="text-blue-500" aria-hidden />
+              {locating ? (
+                <Loader2 size={20} className="animate-spin text-blue-500" aria-hidden />
+              ) : (
+                <LocateFixed size={20} className="text-blue-500" aria-hidden />
+              )}
             </button>
             {TOOLBAR_ACTIONS.map(({ Icon, filter, label }) => {
               const active = activeFilter === filter;

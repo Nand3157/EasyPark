@@ -34,7 +34,7 @@ export function HeroSearch({
         <Reveal>
           <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-600/20 bg-blue-600/5 px-4 py-2 text-xs font-medium text-blue-700 md:text-sm dark:border-blue-400/20 dark:bg-blue-400/10 dark:text-blue-300">
             <Sparkles size={14} aria-hidden />
-            Real-time urban parking discovery
+            Real nearby parking, live on the map
           </p>
         </Reveal>
         <Reveal delay={0.08}>

@@ -12,6 +12,13 @@ export interface ParkingSpot {
   features: string[];
   lat: number;
   lng: number;
+  /** "demo" = generated placeholders; "live" = real OpenStreetMap lots. */
+  source: "demo" | "live";
+  /** Real capacity from OSM tags (null when untagged or demo). */
+  capacity: number | null;
+  /** Real fee status from OSM tags (null when untagged or demo). */
+  fee: "free" | "paid" | null;
+  operator?: string;
 }
 
 export interface PresetLocation {
@@ -35,12 +42,12 @@ export const PRESET_LOCATIONS: Record<string, PresetLocation> = {
 };
 
 export const INITIAL_SPOTS: ParkingSpot[] = [
-  { id: 1, name: "Central Plaza Parking", distance: "0.4 km", walkTime: "5 min", hourly: "₹40", hourlyNum: 40, daily: "₹250", rating: 4.8, available: 18, total: 120, features: ["EV", "Covered", "24h"], lat: 12.9716, lng: 77.5946 },
-  { id: 2, name: "Skyview Garage", distance: "0.8 km", walkTime: "10 min", hourly: "₹60", hourlyNum: 60, daily: "₹400", rating: 4.5, available: 5, total: 80, features: ["Valet", "Secure"], lat: 12.975, lng: 77.59 },
-  { id: 3, name: "Green Park Lot", distance: "1.2 km", walkTime: "15 min", hourly: "₹30", hourlyNum: 30, daily: "₹200", rating: 4.2, available: 45, total: 150, features: ["EV", "Handicap"], lat: 12.968, lng: 77.599 },
-  { id: 4, name: "Metro Station Hub", distance: "0.2 km", walkTime: "2 min", hourly: "₹50", hourlyNum: 50, daily: "₹300", rating: 4.9, available: 12, total: 200, features: ["Secure", "24h"], lat: 12.972, lng: 77.593 },
-  { id: 5, name: "The Grand Mall", distance: "1.5 km", walkTime: "18 min", hourly: "₹70", hourlyNum: 70, daily: "₹500", rating: 4.7, available: 32, total: 300, features: ["Valet", "Covered", "EV"], lat: 12.978, lng: 77.596 },
-  { id: 6, name: "Business District B1", distance: "0.6 km", walkTime: "8 min", hourly: "₹45", hourlyNum: 45, daily: "₹280", rating: 4.4, available: 8, total: 50, features: ["Secure", "Handicap"], lat: 12.97, lng: 77.591 },
+  { id: 1, name: "Central Plaza Parking", distance: "0.4 km", walkTime: "5 min", hourly: "₹40", hourlyNum: 40, daily: "₹250", rating: 4.8, available: 18, total: 120, features: ["EV", "Covered", "24h"], lat: 12.9716, lng: 77.5946, source: "demo", capacity: null, fee: null },
+  { id: 2, name: "Skyview Garage", distance: "0.8 km", walkTime: "10 min", hourly: "₹60", hourlyNum: 60, daily: "₹400", rating: 4.5, available: 5, total: 80, features: ["Valet", "Secure"], lat: 12.975, lng: 77.59, source: "demo", capacity: null, fee: null },
+  { id: 3, name: "Green Park Lot", distance: "1.2 km", walkTime: "15 min", hourly: "₹30", hourlyNum: 30, daily: "₹200", rating: 4.2, available: 45, total: 150, features: ["EV", "Handicap"], lat: 12.968, lng: 77.599, source: "demo", capacity: null, fee: null },
+  { id: 4, name: "Metro Station Hub", distance: "0.2 km", walkTime: "2 min", hourly: "₹50", hourlyNum: 50, daily: "₹300", rating: 4.9, available: 12, total: 200, features: ["Secure", "24h"], lat: 12.972, lng: 77.593, source: "demo", capacity: null, fee: null },
+  { id: 5, name: "The Grand Mall", distance: "1.5 km", walkTime: "18 min", hourly: "₹70", hourlyNum: 70, daily: "₹500", rating: 4.7, available: 32, total: 300, features: ["Valet", "Covered", "EV"], lat: 12.978, lng: 77.596, source: "demo", capacity: null, fee: null },
+  { id: 6, name: "Business District B1", distance: "0.6 km", walkTime: "8 min", hourly: "₹45", hourlyNum: 45, daily: "₹280", rating: 4.4, available: 8, total: 50, features: ["Secure", "Handicap"], lat: 12.97, lng: 77.591, source: "demo", capacity: null, fee: null },
 ];
 
 export const FILTERS = [
@@ -99,6 +106,9 @@ export function generateSpotsForLocation(lat: number, lng: number, placeName: st
     features: s.feat,
     lat: lat + s.offLat,
     lng: lng + s.offLng,
+    source: "demo",
+    capacity: null,
+    fee: null,
   }));
 }
 

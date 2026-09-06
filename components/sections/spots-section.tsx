@@ -16,6 +16,7 @@ interface SpotsSectionProps {
   onToggleFavorite: (id: number) => void;
   onFocusSpot: (spot: ParkingSpot) => void;
   onReserve: (id: number) => void;
+  dataSource: "demo" | "live" | "demo-fallback";
 }
 
 /** Results grid: section head, empty state, spot cards. */
@@ -29,6 +30,7 @@ export function SpotsSection({
   onToggleFavorite,
   onFocusSpot,
   onReserve,
+  dataSource,
 }: SpotsSectionProps) {
   const city = locationName.split(",")[0];
 
@@ -54,7 +56,16 @@ export function SpotsSection({
 
       {spots.length === 0 ? (
         <div className="surface t-tertiary p-12 text-center text-sm" role="status">
-          No spots match “{activeFilter}”. Try “Nearby” or another filter.
+          {dataSource === "live" ? (
+            <>
+              No mapped parking lots found within 3 km of {city}. OpenStreetMap coverage varies by
+              area — try a city center, or another filter.
+            </>
+          ) : (
+            <>
+              No parking spots match “{activeFilter}”. Try selecting “Nearby” or another filter.
+            </>
+          )}
         </div>
       ) : (
         <ul className="grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">

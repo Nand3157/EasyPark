@@ -10,11 +10,11 @@ Find, compare, and navigate to parking spots with live maps, real-time availabil
 - **GPS locate-me** — one click centers the map on your current position using the browser geolocation API.
 - **Interactive live map** — Leaflet + react-leaflet with custom markers, popups, auto re-centering, and external navigation links (Google Maps).
 - **Smart filters & sorting** — Nearby, Cheapest, Open Now, EV Charging, Covered, Handicap Access, 24 Hours, Valet, Secure.
-- **Spot cards** — hourly/daily pricing (₹), ratings, live availability counts, distance/walk time, feature tags, favorites (heart toggle).
+- **Spot cards** — demo spots show hourly/daily pricing (₹), ratings and availability; real OSM lots show fee status, capacity and operator instead. Favorites and reservations persist in localStorage.
 - **Dark / light mode** — full theme switcher with animated gradients, glowing orbs, dot-field canvas background, and video backdrop.
 - **Motion-rich UI** — spring hover cards, scroll reveals, animated borders (BorderGlow), custom DotField canvas.
 
-> Note: parking listings are currently **generated mock data** around the selected coordinates (`generateSpotsForLocation` in `components/ParkSmartApp.tsx`), not a live parking API. Great for demo/UI; plug in a real provider later.
+> **Data:** on first visit the app asks for your location and loads **real nearby lots from OpenStreetMap** (Overpass API, `lib/overpass.ts`) — names, positions, capacity and fee tags within 3 km. OSM has no live occupancy feed, so availability counts appear only on demo spots; if the live lookup fails you'll see clearly-labelled demo placeholders (`generateSpotsForLocation` in `lib/parking.ts`).
 
 ## Tech stack
 

@@ -6,8 +6,8 @@ import { Reveal } from "@/components/motion/reveal";
 const FEATURES = [
   {
     Icon: Clock,
-    title: "Real-time availability",
-    desc: "See live open-spot counts before you leave, not after three laps of the block.",
+    title: "Live on the map",
+    desc: "Real mapped lots around you — see what's actually nearby before you leave.",
   },
   {
     Icon: Zap,

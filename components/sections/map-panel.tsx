@@ -27,6 +27,7 @@ interface MapPanelProps {
   activeFilter: string;
   onSelectFilter: (filter: string) => void;
   onLocate: () => void;
+  dataSource: "demo" | "live" | "demo-fallback";
 }
 
 const TOOLBAR_ACTIONS = [
@@ -48,6 +49,7 @@ export function MapPanel({
   activeFilter,
   onSelectFilter,
   onLocate,
+  dataSource,
 }: MapPanelProps) {
   const selectedSpot = selectedSpotId
     ? filteredSpots.find((s) => s.id === selectedSpotId) ?? null
@@ -117,10 +119,26 @@ export function MapPanel({
                   </button>
                 </div>
                 <p className="t-secondary mb-4 text-xs">
-                  {selectedSpot.hourly} / hr • {selectedSpot.distance} away •{" "}
-                  <strong className="font-semibold text-emerald-600 dark:text-emerald-400">
-                    {selectedSpot.available} available
-                  </strong>
+                  {selectedSpot.distance} away
+                  {selectedSpot.source === "live" ? (
+                    <>
+                      {" • "}
+                      {selectedSpot.fee === "free"
+                        ? "Free"
+                        : selectedSpot.fee === "paid"
+                          ? "Paid parking"
+                          : "Fee unknown"}
+                      {selectedSpot.capacity != null && ` • ${selectedSpot.capacity} spaces`}
+                    </>
+                  ) : (
+                    <>
+                      {" • "}
+                      {selectedSpot.hourly} / hr •{" "}
+                      <strong className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        {selectedSpot.available} available
+                      </strong>
+                    </>
+                  )}
                 </p>
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${selectedSpot.lat},${selectedSpot.lng}`}
@@ -136,8 +154,33 @@ export function MapPanel({
 
           <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-[400] flex justify-center md:right-6 md:bottom-6 md:left-6">
             <p className="flex items-center gap-2 rounded-full border border-slate-950/10 bg-white/90 px-5 py-2.5 text-xs font-medium text-slate-700 shadow-xl backdrop-blur-md md:text-sm dark:border-white/15 dark:bg-slate-950/70 dark:text-white/90">
-              Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>
-              spots in <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">{locationName}</strong>
+              {dataSource === "live" ? (
+                <span>
+                  Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
+                  real parking lots near{" "}
+                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
+                    {locationName}
+                  </strong>{" "}
+                  · OpenStreetMap
+                </span>
+              ) : dataSource === "demo-fallback" ? (
+                <span>
+                  Live data unreachable —{" "}
+                  <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong> demo
+                  spots near{" "}
+                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
+                    {locationName}
+                  </strong>
+                </span>
+              ) : (
+                <span>
+                  Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
+                  demo spots in{" "}
+                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
+                    {locationName}
+                  </strong>
+                </span>
+              )}
             </p>
           </div>
         </div>

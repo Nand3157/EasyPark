@@ -16,8 +16,14 @@ interface SpotCardProps {
   onReserve: () => void;
 }
 
-const FEATURE_ICONS = [
-  { key: "EV", label: "EV charging", Icon: BatteryCharging, tone: "bg-blue-600/10 text-blue-600 dark:text-blue-400" },
+/** Human label for the OSM fee tag. Unknown stays unknown — never guessed. */
+function feeLabel(fee: ParkingSpot["fee"]): string {
+  if (fee === "free") return "Free";
+  if (fee === "paid") return "Paid";
+  return "Unknown";
+}
+
+const FEATURE_ICONS = [  { key: "EV", label: "EV charging", Icon: BatteryCharging, tone: "bg-blue-600/10 text-blue-600 dark:text-blue-400" },
   { key: "Covered", label: "Covered parking", Icon: Warehouse, tone: "bg-purple-600/10 text-purple-600 dark:text-purple-400" },
   { key: "Secure", label: "24/7 security", Icon: Shield, tone: "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400" },
   { key: "Handicap", label: "Handicap access", Icon: Accessibility, tone: "bg-amber-600/10 text-amber-600 dark:text-amber-400" },
@@ -25,7 +31,9 @@ const FEATURE_ICONS = [
 
 /** Single parking listing: identity, pricing, availability, features, actions. */
 export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFavorite, onFocus, onReserve }: SpotCardProps) {
+  const isLive = spot.source === "live";
   const lowAvailability = spot.available < 10;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
 
   return (
     <Card
@@ -70,39 +78,68 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
-          <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Hourly</p>
-          <p className="text-lg font-bold text-slate-950 dark:text-white">
-            {spot.hourly}
-            <span className="t-tertiary text-xs font-normal">/hr</span>
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
-          <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Full day</p>
-          <p className="text-lg font-bold text-slate-950 dark:text-white">
-            {spot.daily}
-            <span className="t-tertiary text-xs font-normal">/day</span>
-          </p>
-        </div>
+        {isLive ? (
+          <>
+            <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
+              <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Fee status</p>
+              <p className="text-lg font-bold text-slate-950 dark:text-white">{feeLabel(spot.fee)}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
+              <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Capacity</p>
+              <p className="text-lg font-bold text-slate-950 dark:text-white">
+                {spot.capacity ?? "—"}
+                {spot.capacity != null && (
+                  <span className="t-tertiary text-xs font-normal"> spaces</span>
+                )}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
+              <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Hourly</p>
+              <p className="text-lg font-bold text-slate-950 dark:text-white">
+                {spot.hourly}
+                <span className="t-tertiary text-xs font-normal">/hr</span>
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-950/8 bg-slate-950/[0.03] p-3 dark:border-white/8 dark:bg-white/5">
+              <p className="t-tertiary mb-1 text-[10px] tracking-wider uppercase">Full day</p>
+              <p className="text-lg font-bold text-slate-950 dark:text-white">
+                {spot.daily}
+                <span className="t-tertiary text-xs font-normal">/day</span>
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
-      <div className="mb-5 flex items-center justify-between">
-        <p className="flex items-center gap-1.5 text-sm font-bold text-slate-950 dark:text-white">
-          <Star size={16} className="text-amber-500" fill="currentColor" aria-hidden />
-          {spot.rating}
-          <span className="sr-only">out of 5</span>
-        </p>
-        <p
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-semibold",
-            lowAvailability
-              ? "bg-red-500/15 text-red-600 dark:text-red-400"
-              : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-          )}
-        >
-          {spot.available} / {spot.total} available
-        </p>
-      </div>
+      {isLive ? (
+        <div className="mb-5 flex items-center justify-between gap-2">
+          <p className="t-secondary truncate text-sm">{spot.operator ?? "Community-mapped lot"}</p>
+          <p className="t-tertiary shrink-0 rounded-full bg-slate-950/5 px-3 py-1 text-xs font-semibold dark:bg-white/10">
+            {spot.capacity != null ? `${spot.capacity} spaces` : "Capacity unknown"}
+          </p>
+        </div>
+      ) : (
+        <div className="mb-5 flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-sm font-bold text-slate-950 dark:text-white">
+            <Star size={16} className="text-amber-500" fill="currentColor" aria-hidden />
+            {spot.rating}
+            <span className="sr-only">out of 5</span>
+          </p>
+          <p
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-semibold",
+              lowAvailability
+                ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+            )}
+          >
+            {spot.available} / {spot.total} available
+          </p>
+        </div>
+      )}
 
       {spot.features.length > 0 && (
         <ul aria-label={`${spot.name} amenities`} className="mb-6 flex flex-wrap gap-2">
@@ -115,29 +152,44 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
         </ul>
       )}
 
-      <div className="mt-auto grid grid-cols-3 gap-2">
+      <div className={cn("mt-auto grid gap-2", isLive ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")}>
         <Button variant="outline" size="sm" onClick={onFocus} className="px-2">
           <LocateFixed size={14} aria-hidden /> Focus
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-2 text-emerald-700 hover:text-emerald-600 dark:text-emerald-300"
-        >
-          <Navigation size={13} aria-hidden /> Maps
-        </Button>
-        <Button
-          variant={isReserved ? "success" : "secondary"}
-          size="sm"
-          onClick={onReserve}
-          aria-live="polite"
-          className="px-2"
-        >
-          {isReserved ? "✓ Reserved" : "Reserve"}
-        </Button>
+        {!isLive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2 text-emerald-700 hover:text-emerald-600 dark:text-emerald-300"
+          >
+            <Navigation size={13} aria-hidden /> Maps
+          </Button>
+        )}
+        {isLive ? (
+          <Button
+            variant="success"
+            size="sm"
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2"
+          >
+            <Navigation size={13} aria-hidden /> Directions
+          </Button>
+        ) : (
+          <Button
+            variant={isReserved ? "success" : "secondary"}
+            size="sm"
+            onClick={onReserve}
+            aria-live="polite"
+            className="px-2"
+          >
+            {isReserved ? "✓ Reserved" : "Reserve"}
+          </Button>
+        )}
       </div>
     </Card>
   );

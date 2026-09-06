@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import DotField from './DotField';
 import { SiteHeader } from './layout/site-header';
@@ -21,6 +21,7 @@ import {
   type ParkingSpot,
 } from '@/lib/parking';
 import { scrollToSection } from '@/lib/utils';
+import { fetchLiveParking } from '@/lib/overpass';
 
 export default function EasyParkApp() {
   const [theme, setTheme] = usePersistentState<'dark' | 'light'>('easypark:theme', 'dark', isTheme);
@@ -35,6 +36,7 @@ export default function EasyParkApp() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);
+  const [dataSource, setDataSource] = useState<"demo" | "live" | "demo-fallback">("demo");
 
   // Heavy canvas ambience runs on desktop only, and never under reduced motion.
   const isMobile = useIsMobile();
@@ -61,6 +63,23 @@ export default function EasyParkApp() {
     scrollToSection("spots");
   };
 
+  // Load spots for an area: real OpenStreetMap lots first,
+  // clearly-labelled demo placeholders if the live lookup fails.
+  const loadSpots = useCallback(async (lat: number, lng: number, label: string, zoom = 14) => {
+    setMapCenter([lat, lng]);
+    setMapZoom(zoom);
+    setCurrentLocationName(label);
+    try {
+      const live = await fetchLiveParking(lat, lng);
+      setParkingData(live);
+      setDataSource("live");
+    } catch (err) {
+      console.error("Live parking lookup failed, showing demo spots:", err);
+      setParkingData(generateSpotsForLocation(lat, lng, label));
+      setDataSource("demo-fallback");
+    }
+  }, []);
+
   const handleSearch = async (queryToSearch: string) => {
     const trimmed = queryToSearch.trim();
     if (!trimmed) return;
@@ -73,10 +92,7 @@ export default function EasyParkApp() {
     const presetKey = Object.keys(PRESET_LOCATIONS).find(key => lower.includes(key));
     if (presetKey) {
       const loc = PRESET_LOCATIONS[presetKey];
-      setMapCenter([loc.lat, loc.lng]);
-      setMapZoom(14);
-      setCurrentLocationName(loc.name);
-      setParkingData(generateSpotsForLocation(loc.lat, loc.lng, loc.name));
+      await loadSpots(loc.lat, loc.lng, loc.name);
       setIsSearching(false);
       return;
     }
@@ -92,11 +108,7 @@ export default function EasyParkApp() {
         const lat = parseFloat(item.lat);
         const lng = parseFloat(item.lon);
         const displayName = item.display_name || trimmed;
-
-        setMapCenter([lat, lng]);
-        setMapZoom(14);
-        setCurrentLocationName(displayName);
-        setParkingData(generateSpotsForLocation(lat, lng, displayName));
+        await loadSpots(lat, lng, displayName);
       } else {
         setSearchError(`No coordinates found for "${trimmed}". Try "Vadodara", "Mumbai" or "London".`);
       }
@@ -118,15 +130,12 @@ export default function EasyParkApp() {
     setSearchError(null);
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const label = "Your Current Location";
-        setMapCenter([lat, lng]);
-        setMapZoom(15);
-        setCurrentLocationName(label);
-        setParkingData(generateSpotsForLocation(lat, lng, label));
-        setIsSearching(false);
+      async (pos) => {
+        try {
+          await loadSpots(pos.coords.latitude, pos.coords.longitude, "Your Current Location", 15);
+        } finally {
+          setIsSearching(false);
+        }
       },
       (err) => {
         console.error("GPS error:", err);
@@ -138,6 +147,43 @@ export default function EasyParkApp() {
   };
 
   const filteredSpots = applySpotFilter(parkingData, activeFilter);
+
+  // On first visit, ask once for the user's location to show real nearby lots.
+  // The prompt is never repeated: the answer is remembered in localStorage.
+  const autoLocateAttempted = useRef(false);
+  useEffect(() => {
+    if (autoLocateAttempted.current || !navigator.geolocation) return;
+    autoLocateAttempted.current = true;
+    const markAsked = () => {
+      try {
+        window.localStorage.setItem("easypark:geo-asked", "1");
+      } catch {
+        // Storage unavailable — still only attempt once per mount.
+      }
+    };
+    let alreadyAsked = false;
+    try {
+      alreadyAsked = window.localStorage.getItem("easypark:geo-asked") === "1";
+    } catch {
+      // Storage unavailable — proceed with the one-time attempt.
+    }
+    if (alreadyAsked) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        markAsked();
+        setIsSearching(true);
+        try {
+          await loadSpots(pos.coords.latitude, pos.coords.longitude, "Your Current Location", 15);
+        } finally {
+          setIsSearching(false);
+        }
+      },
+      () => {
+        markAsked();
+      },
+      { timeout: 10000 }
+    );
+  }, [loadSpots]);
 
   return (
     <div id="top" className={theme}>
@@ -191,6 +237,7 @@ export default function EasyParkApp() {
             activeFilter={activeFilter}
             onSelectFilter={goToFilter}
             onLocate={handleCurrentLocation}
+            dataSource={dataSource}
           />
 
           <SpotsSection
@@ -203,6 +250,7 @@ export default function EasyParkApp() {
             onToggleFavorite={toggleFavorite}
             onFocusSpot={focusSpot}
             onReserve={reserveSpot}
+            dataSource={dataSource}
           />
 
           <Features />

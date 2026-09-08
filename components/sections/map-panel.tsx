@@ -66,7 +66,7 @@ export function MapPanel({
             mapZoom={mapZoom}
             filteredSpots={filteredSpots}
             selectedSpotId={selectedSpotId}
-            setSelectedSpotId={(id: number) => onSelectSpot(id)}
+            setSelectedSpotId={onSelectSpot}
           />
 
           <div className="absolute top-4 left-4 z-[400] flex flex-col gap-2.5 md:top-6 md:left-6">

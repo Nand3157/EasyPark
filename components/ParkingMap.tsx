@@ -1,108 +1,49 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import type LType from 'leaflet';
-import type {
-  MapContainerProps,
-  TileLayerProps,
-  MarkerProps,
-  PopupProps,
-} from 'react-leaflet';
-import { Navigation, ExternalLink, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import L from 'leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Navigation, ExternalLink } from 'lucide-react';
+import type { ParkingSpot } from '@/lib/parking';
 
-interface ParkingSpot {
-  id: number;
-  name: string;
-  distance: string;
-  walkTime: string;
-  hourly: string;
-  hourlyNum: number;
-  daily: string;
-  rating: number;
-  available: number;
-  total: number;
-  features: string[];
-  lat: number;
-  lng: number;
-}
+// Parent (`MapPanel`) already loads this via `next/dynamic(ssr:false)`,
+// so static Leaflet imports are SSR-safe here and keep full types.
+// Leaflet CSS is imported once in `app/globals.css`.
 
 interface ParkingMapProps {
   mapCenter: [number, number];
   mapZoom: number;
   filteredSpots: ParkingSpot[];
   selectedSpotId: number | null;
-  setSelectedSpotId: (id: number) => void;
+  setSelectedSpotId: (id: number | null) => void;
 }
 
-function MapController({
-  center,
-  zoom,
-  useMap,
-}: {
-  center: [number, number];
-  zoom: number;
-  useMap: () => LType.Map;
-}) {
+// Fix bundled default-icon URLs (Next.js doesn't serve Leaflet's
+// relative image paths). Harmless when only divIcons are used, but
+// prevents broken 404 markers if a default Marker ever renders.
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+}
+
+function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    if (map) {
-      map.flyTo(center, zoom, { duration: 1.5 });
-    }
+    map.flyTo(center, zoom, { duration: 1.5 });
   }, [center, zoom, map]);
   return null;
 }
 
-export default function ParkingMap({
-  mapCenter,
-  mapZoom,
-  filteredSpots,
-  selectedSpotId,
-  setSelectedSpotId,
-}: ParkingMapProps) {
-  const [mapComponents, setMapComponents] = useState<{
-    L: typeof LType;
-    MapContainer: React.ComponentType<MapContainerProps>;
-    TileLayer: React.ComponentType<TileLayerProps>;
-    Marker: React.ComponentType<MarkerProps>;
-    Popup: React.ComponentType<PopupProps>;
-    useMap: () => LType.Map;
-  } | null>(null);
-
-  useEffect(() => {
-    Promise.all([
-      import('leaflet'),
-      import('react-leaflet')
-    ]).then(([leafletModule, reactLeafletModule]) => {
-      setMapComponents({
-        L: leafletModule.default || leafletModule,
-        MapContainer: reactLeafletModule.MapContainer,
-        TileLayer: reactLeafletModule.TileLayer,
-        Marker: reactLeafletModule.Marker,
-        Popup: reactLeafletModule.Popup,
-        useMap: reactLeafletModule.useMap,
-      });
-    }).catch(err => {
-      console.error('Failed to load map components:', err);
-    });
-  }, []);
-
-  if (!mapComponents || typeof window === 'undefined') {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-950/80 rounded-[2.5rem]">
-        <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
-          <Loader2 className="animate-spin" size={18} /> Initializing Interactive Map...
-        </div>
-      </div>
-    );
-  }
-
-  const { L, MapContainer, TileLayer, Marker, Popup, useMap } = mapComponents;
-
-  const createMarkerIcon = (isSelected: boolean, available: number) => {
-    const color = available < 10 ? '#ef4444' : '#3b82f6';
-    return L.divIcon({
-      className: 'custom-leaflet-marker',
-      html: `
+function markerIcon(isSelected: boolean, available: number) {
+  const color = available < 10 ? '#ef4444' : '#3b82f6';
+  return L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: `
         <div style="
           background: ${isSelected ? '#ffffff' : '#0f172a'};
           color: ${isSelected ? '#000000' : '#ffffff'};
@@ -122,39 +63,83 @@ export default function ParkingMap({
           P (${available})
         </div>
       `,
-      iconSize: [60, 30],
-    });
-  };
+    iconSize: [60, 30],
+    iconAnchor: [30, 30],
+    popupAnchor: [0, -28],
+  });
+}
+
+export default function ParkingMap({
+  mapCenter,
+  mapZoom,
+  filteredSpots,
+  selectedSpotId,
+  setSelectedSpotId,
+}: ParkingMapProps) {
+  // Rebuild icons only when selection changes — avoids N divIcon allocs per render.
+  const icons = useMemo(() => {
+    const cache = new Map<number, L.DivIcon>();
+    for (const spot of filteredSpots) {
+      cache.set(spot.id, markerIcon(selectedSpotId === spot.id, spot.available));
+    }
+    return cache;
+  }, [filteredSpots, selectedSpotId]);
 
   return (
-    <MapContainer center={mapCenter} zoom={mapZoom} className="h-full w-full">
-      <MapController center={mapCenter} zoom={mapZoom} useMap={useMap} />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+    <MapContainer
+      center={mapCenter}
+      zoom={mapZoom}
+      scrollWheelZoom
+      attributionControl
+      className="h-full w-full"
+      style={{ height: '100%', width: '100%', background: '#0f172a' }}
+    >
+      <MapController center={mapCenter} zoom={mapZoom} />
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        maxZoom={19}
+      />
       {filteredSpots.map((spot) => (
         <Marker
           key={spot.id}
           position={[spot.lat, spot.lng]}
-          icon={createMarkerIcon(selectedSpotId === spot.id, spot.available)}
+          icon={icons.get(spot.id)}
           eventHandlers={{
             click: () => setSelectedSpotId(spot.id),
           }}
         >
           <Popup>
-            <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-700/80 min-w-[210px] space-y-1.5">
-              <h4 className="font-bold text-sm text-white leading-snug">{spot.name}</h4>
-              <p className="text-xs text-slate-300 font-medium">{spot.hourly} / hr • {spot.walkTime} walk</p>
+            <div className="min-w-[210px] space-y-1.5 rounded-2xl border border-slate-700/80 bg-slate-900 p-4 text-white shadow-2xl">
+              <h4 className="text-sm leading-snug font-bold text-white">{spot.name}</h4>
+              {spot.source === 'live' ? (
+                <p className="text-xs font-medium text-slate-300">
+                  {spot.fee === 'free'
+                    ? 'Free'
+                    : spot.fee === 'paid'
+                      ? 'Paid parking'
+                      : 'Fee unknown'}
+                  {spot.capacity != null && ` • ${spot.capacity} spaces`}
+                  {` • ${spot.distance} walk`}
+                </p>
+              ) : (
+                <p className="text-xs font-medium text-slate-300">
+                  {spot.hourly} / hr • {spot.walkTime} walk
+                </p>
+              )}
               <div className="text-xs font-semibold text-blue-400">
-                {spot.available} of {spot.total} spots free
+                {spot.source === 'live' && spot.capacity == null
+                  ? 'Real OSM lot — occupancy unavailable'
+                  : `${spot.available} of ${spot.total} spots free`}
               </div>
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 flex items-center justify-center gap-1.5 w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 font-bold text-xs rounded-xl shadow-md transition-colors text-center no-underline !text-white"
-                style={{ color: '#ffffff' }}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2.5 text-center text-xs font-bold !text-white no-underline shadow-md transition-colors hover:bg-blue-500"
               >
                 <Navigation size={13} className="text-white" />
-                <span className="!text-white font-bold" style={{ color: '#ffffff' }}>Open in Google Maps</span>
+                <span className="font-bold !text-white">Open in Google Maps</span>
                 <ExternalLink size={12} className="text-white/80" />
               </a>
             </div>

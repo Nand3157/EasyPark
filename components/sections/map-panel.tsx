@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Accessibility, Clock, Loader2, LocateFixed, TrendingUp, Warehouse, X, Zap } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import { parkingSearchUrl } from "@/lib/maps";
 import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion/reveal";
 
@@ -160,8 +161,8 @@ export function MapPanel({
           )}
 
           <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-[400] flex justify-center md:right-6 md:bottom-6 md:left-6">
-            <p className="flex items-center gap-2 rounded-full border border-slate-950/10 bg-white/90 px-5 py-2.5 text-xs font-medium text-slate-700 shadow-xl backdrop-blur-md md:text-sm dark:border-white/15 dark:bg-slate-950/70 dark:text-white/90">
-              {dataSource === "live" ? (
+            <p className="pointer-events-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-slate-950/10 bg-white/90 px-5 py-2.5 text-xs font-medium text-slate-700 shadow-xl backdrop-blur-md md:text-sm dark:border-white/15 dark:bg-slate-950/70 dark:text-white/90">
+              {dataSource === "live" && filteredSpots.length > 0 ? (
                 <span>
                   Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
                   real parking lots near{" "}
@@ -170,22 +171,21 @@ export function MapPanel({
                   </strong>{" "}
                   · OpenStreetMap
                 </span>
-              ) : dataSource === "demo-fallback" ? (
-                <span>
-                  Live data unreachable —{" "}
-                  <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong> demo
-                  spots near{" "}
-                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
-                    {locationName}
-                  </strong>
-                </span>
               ) : (
-                <span>
-                  Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
-                  demo spots in{" "}
-                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
-                    {locationName}
-                  </strong>
+                <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  <span>
+                    {dataSource === "live"
+                      ? `No mapped lots near ${locationName} — try real results:`
+                      : `Live data unreachable — find real parking:`}
+                  </span>
+                  <a
+                    href={parkingSearchUrl(mapCenter[0], mapCenter[1])}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full bg-blue-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-blue-500"
+                  >
+                    Search parking on Google Maps ↗
+                  </a>
                 </span>
               )}
             </p>

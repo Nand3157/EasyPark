@@ -74,7 +74,7 @@ function toSpot(
     distance: formatDistance(distKm),
     walkTime: walkTimeFor(distKm),
     hourly: "—",
-    // No real price feed: sort priced demo spots first under "Cheapest".
+    // No real price feed: live spots sort after any priced spots under "Cheapest".
     hourlyNum: Number.POSITIVE_INFINITY,
     daily: "—",
     rating: 0,

@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import { parkingSearchUrl } from "@/lib/maps";
 import { scrollToSection } from "@/lib/utils";
 import { Reveal } from "@/components/motion/reveal";
 import { SpotCard } from "@/components/parking/spot-card";
@@ -9,6 +10,7 @@ import { SpotCard } from "@/components/parking/spot-card";
 interface SpotsSectionProps {
   spots: ParkingSpot[];
   locationName: string;
+  mapCenter: [number, number];
   activeFilter: string;
   selectedId: number | null;
   favorites: number[];
@@ -23,7 +25,7 @@ interface SpotsSectionProps {
 export function SpotsSection({
   spots,
   locationName,
-  activeFilter,
+  mapCenter,
   selectedId,
   favorites,
   reservedIds,
@@ -56,16 +58,24 @@ export function SpotsSection({
 
       {spots.length === 0 ? (
         <div className="surface t-tertiary p-12 text-center text-sm" role="status">
-          {dataSource === "live" ? (
-            <>
-              No mapped parking lots found within 3 km of {city}. OpenStreetMap coverage varies by
-              area — try a city center, or another filter.
-            </>
-          ) : (
-            <>
-              No parking spots match “{activeFilter}”. Try selecting “Nearby” or another filter.
-            </>
-          )}
+          <p className="mx-auto mb-5 max-w-md">
+            {dataSource === "live" ? (
+              <>
+                No mapped parking lots found within 3 km of {city}. OpenStreetMap coverage varies by
+                area — Google has real results:
+              </>
+            ) : (
+              <>Live data unreachable — find real parking near {city} on Google Maps:</>
+            )}
+          </p>
+          <a
+            href={parkingSearchUrl(mapCenter[0], mapCenter[1])}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/25 transition-colors hover:bg-blue-500"
+          >
+            Search parking on Google Maps ↗
+          </a>
         </div>
       ) : (
         <ul className="grid list-none grid-cols-1 gap-5 p-0 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">

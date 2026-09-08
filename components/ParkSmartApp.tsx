@@ -14,10 +14,8 @@ import { Closing } from './sections/closing';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isNumberArray, isTheme, usePersistentState } from '@/hooks/use-persistent-state';
 import {
-  INITIAL_SPOTS,
   PRESET_LOCATIONS,
   applySpotFilter,
-  generateSpotsForLocation,
   type ParkingSpot,
 } from '@/lib/parking';
 import { scrollToSection } from '@/lib/utils';
@@ -30,14 +28,14 @@ export default function EasyParkApp() {
   const [currentLocationName, setCurrentLocationName] = useState("Bengaluru, Karnataka, India");
   const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
   const [mapZoom, setMapZoom] = useState(14);
-  const [parkingData, setParkingData] = useState<ParkingSpot[]>(INITIAL_SPOTS);
+  const [parkingData, setParkingData] = useState<ParkingSpot[]>([]);
   const [activeFilter, setActiveFilter] = useState("Nearby");
   const [favorites, setFavorites] = usePersistentState<number[]>('easypark:favorites', [], isNumberArray);
   const [reservedIds, setReservedIds] = usePersistentState<number[]>('easypark:reservations', [], isNumberArray);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);
-  const [dataSource, setDataSource] = useState<"demo" | "live" | "demo-fallback">("demo");
+  const [dataSource, setDataSource] = useState<"demo" | "live" | "demo-fallback">("live");
 
   // Heavy canvas ambience runs on desktop only, and never under reduced motion.
   const isMobile = useIsMobile();
@@ -64,8 +62,8 @@ export default function EasyParkApp() {
     scrollToSection("spots");
   };
 
-  // Load spots for an area: real OpenStreetMap lots first,
-  // clearly-labelled demo placeholders if the live lookup fails.
+  // Load spots for an area: real OpenStreetMap lots only.
+  // No fake inventory — on failure we show empty + a Google Maps CTA.
   const loadSpots = useCallback(async (lat: number, lng: number, label: string, zoom = 14) => {
     setMapCenter([lat, lng]);
     setMapZoom(zoom);
@@ -75,8 +73,8 @@ export default function EasyParkApp() {
       setParkingData(live);
       setDataSource("live");
     } catch (err) {
-      console.error("Live parking lookup failed, showing demo spots:", err);
-      setParkingData(generateSpotsForLocation(lat, lng, label));
+      console.error("Live parking lookup failed:", err);
+      setParkingData([]);
       setDataSource("demo-fallback");
     }
   }, []);
@@ -233,6 +231,7 @@ export default function EasyParkApp() {
           <SpotsSection
             spots={filteredSpots}
             locationName={currentLocationName}
+            mapCenter={mapCenter}
             activeFilter={activeFilter}
             selectedId={selectedSpotId}
             favorites={favorites}

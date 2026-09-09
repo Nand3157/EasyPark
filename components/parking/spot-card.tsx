@@ -1,7 +1,9 @@
 "use client";
 
-import { Accessibility, BatteryCharging, Clock, Globe, Heart, LocateFixed, MapPin, Navigation, Shield, Star, Warehouse } from "lucide-react";
+import * as React from "react";
+import { Accessibility, AlarmClock, BatteryCharging, Check, Clock, Globe, Heart, LocateFixed, MapPin, Navigation, Share2, Shield, Star, Warehouse } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import { buildSpotUrl, copyText } from "@/lib/share";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +16,7 @@ interface SpotCardProps {
   onToggleFavorite: () => void;
   onFocus: () => void;
   onReserve: () => void;
+  onStartSession: () => void;
 }
 
 /** Human label for the OSM fee tag. Unknown stays unknown — never guessed. */
@@ -30,10 +33,17 @@ const FEATURE_ICONS = [  { key: "EV", label: "EV charging", Icon: BatteryChargin
 ];
 
 /** Single parking listing: identity, pricing, availability, features, actions. */
-export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFavorite, onFocus, onReserve }: SpotCardProps) {
+export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFavorite, onFocus, onReserve, onStartSession }: SpotCardProps) {
   const isLive = spot.source === "live";
   const lowAvailability = spot.available < 10;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+  const [copied, setCopied] = React.useState(false);
+
+  const handleShare = async () => {
+    const ok = await copyText(buildSpotUrl(spot));
+    setCopied(ok);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <Card
@@ -64,7 +74,19 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
             </a>
           </p>
         </div>
-        <button
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleShare}
+            aria-label={copied ? "Link copied" : `Share ${spot.name}`}
+            title={copied ? "Link copied!" : "Copy link to this spot"}
+            className={cn(
+              "cursor-pointer rounded-full p-1 transition-colors",
+              copied ? "text-emerald-500" : "text-slate-300 hover:text-blue-500 dark:text-white/20"
+            )}
+          >
+            {copied ? <Check size={20} aria-hidden /> : <Share2 size={20} aria-hidden />}
+          </button>
+          <button
           onClick={onToggleFavorite}
           aria-label={isFavorite ? `Remove ${spot.name} from favorites` : `Save ${spot.name} to favorites`}
           aria-pressed={isFavorite}
@@ -74,7 +96,8 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
           )}
         >
           <Heart size={22} fill={isFavorite ? "currentColor" : "none"} aria-hidden />
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3">
@@ -152,9 +175,17 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
         </ul>
       )}
 
-      <div className={cn("mt-auto grid gap-2", isLive ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")}>
+      <div className={cn("mt-auto grid gap-2", isLive ? "grid-cols-3" : "grid-cols-1 sm:grid-cols-3")}>
         <Button variant="outline" size="sm" onClick={onFocus} className="px-2">
           <LocateFixed size={14} aria-hidden /> Focus
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onStartSession}
+          className="px-2"
+        >
+          <AlarmClock size={14} aria-hidden /> Park 2h
         </Button>
         {!isLive && (
           <Button

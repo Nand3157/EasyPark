@@ -13,34 +13,53 @@ import { Process } from './sections/process';
 import { Closing } from './sections/closing';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isNumberArray, isTheme, usePersistentState } from '@/hooks/use-persistent-state';
+import { useParkingSession } from '@/hooks/use-parking-session';
+import { SessionBanner } from '@/components/parking/session-banner';
 import {
   PRESET_LOCATIONS,
   applySpotFilter,
   type ParkingSpot,
 } from '@/lib/parking';
 import { scrollToSection } from '@/lib/utils';
+import { buildSpotUrl, parseSpotParams } from '@/lib/share';
 import { fetchLiveParking } from '@/lib/overpass';
 import { isBlockedError, resolveUserPosition, type LocateOutcome } from '@/lib/location';
 
 export default function EasyParkApp() {
   const [theme, setTheme] = usePersistentState<'dark' | 'light'>('easypark:theme', 'dark', isTheme);
   const [searchQuery, setSearchQuery] = useState("");
+  // Shared spot links (`?spot=<id>&lat&lng&z`) seed the initial view so no
+  // effect-time setState is needed to honor them.
+  const [sharedParams] = useState(() =>
+    typeof window === "undefined" ? null : parseSpotParams(window.location.search)
+  );
   const [currentLocationName, setCurrentLocationName] = useState("Bengaluru, Karnataka, India");
-  const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
-  const [mapZoom, setMapZoom] = useState(14);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(
+    sharedParams ? [sharedParams.lat, sharedParams.lng] : [12.9716, 77.5946]
+  );
+  const [mapZoom, setMapZoom] = useState(sharedParams?.zoom ?? 14);
   const [parkingData, setParkingData] = useState<ParkingSpot[]>([]);
   const [activeFilter, setActiveFilter] = useState("Nearby");
   const [favorites, setFavorites] = usePersistentState<number[]>('easypark:favorites', [], isNumberArray);
   const [reservedIds, setReservedIds] = usePersistentState<number[]>('easypark:reservations', [], isNumberArray);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [selectedSpotId, setSelectedSpotId] = useState<number | null>(null);
+  const [selectedSpotId, setSelectedSpotId] = useState<number | null>(sharedParams?.spotId ?? null);
   const [dataSource, setDataSource] = useState<"demo" | "live" | "demo-fallback">("live");
 
   // Heavy canvas ambience runs on desktop only, and never under reduced motion.
   const isMobile = useIsMobile();
   const reduceMotion = useReducedMotion();
   const showAmbience = !isMobile && !reduceMotion;
+  const parkingSession = useParkingSession();
+
+  const startParkingSession = useCallback(
+    (spot: ParkingSpot) => {
+      parkingSession.startSession(spot, 120);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parkingSession.startSession]
+  );
 
   const toggleFavorite = (id: number) => {
     setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
@@ -54,6 +73,11 @@ export default function EasyParkApp() {
     setMapCenter([spot.lat, spot.lng]);
     setMapZoom(16);
     setSelectedSpotId(spot.id);
+    try {
+      window.history.replaceState(null, "", buildSpotUrl(spot, 16));
+    } catch {
+      // URL update is best-effort.
+    }
     scrollToSection("map");
   };
 
@@ -150,10 +174,18 @@ export default function EasyParkApp() {
 
   // On first paint, try to locate the user for real nearby lots.
   // Repeats every visit unless the browser hard-blocked the request.
+  // A shared spot link loads lots around its coordinates instead.
   const autoLocateAttempted = useRef(false);
   useEffect(() => {
     if (autoLocateAttempted.current) return;
     autoLocateAttempted.current = true;
+    if (sharedParams) {
+      // Mount-time data fetch for shared links (async fetch → setState in the
+      // callback, not a render cascade). Matches the locateUser pattern below.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadSpots(sharedParams.lat, sharedParams.lng, "Shared location", sharedParams.zoom);
+      return;
+    }
     let blocked = false;
     try {
       blocked = window.localStorage.getItem("easypark:geo-blocked") === "1";
@@ -170,7 +202,7 @@ export default function EasyParkApp() {
         }
       }
     });
-  }, [locateUser]);
+  }, [locateUser, loadSpots, sharedParams]);
 
   return (
     <div id="top" className={theme}>
@@ -239,6 +271,7 @@ export default function EasyParkApp() {
             onToggleFavorite={toggleFavorite}
             onFocusSpot={focusSpot}
             onReserve={reserveSpot}
+            onStartSession={startParkingSession}
             dataSource={dataSource}
           />
 
@@ -247,6 +280,7 @@ export default function EasyParkApp() {
           <Closing />
           <SiteFooter onSelectFilter={goToFilter} />
         </main>
+        <SessionBanner {...parkingSession} />
       </div>
     </div>
   );

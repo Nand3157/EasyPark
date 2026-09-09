@@ -18,6 +18,7 @@ interface SpotsSectionProps {
   onToggleFavorite: (id: number) => void;
   onFocusSpot: (spot: ParkingSpot) => void;
   onReserve: (id: number) => void;
+  onStartSession: (spot: ParkingSpot) => void;
   dataSource: "demo" | "live" | "demo-fallback";
 }
 
@@ -32,6 +33,7 @@ export function SpotsSection({
   onToggleFavorite,
   onFocusSpot,
   onReserve,
+  onStartSession,
   dataSource,
 }: SpotsSectionProps) {
   const city = locationName.split(",")[0];
@@ -90,6 +92,7 @@ export function SpotsSection({
                   onToggleFavorite={() => onToggleFavorite(spot.id)}
                   onFocus={() => onFocusSpot(spot)}
                   onReserve={() => onReserve(spot.id)}
+                  onStartSession={() => onStartSession(spot)}
                 />
               </li>
             </Reveal>

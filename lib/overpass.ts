@@ -20,10 +20,16 @@ interface OverpassTags {
   name?: string;
   operator?: string;
   capacity?: string;
+  "capacity:charging"?: string;
+  "capacity:disabled"?: string;
   fee?: string;
   charge?: string;
   parking?: string;
+  covered?: string;
   access?: string;
+  supervised?: string;
+  wheelchair?: string;
+  opening_hours?: string;
   [key: string]: string | undefined;
 }
 
@@ -48,6 +54,16 @@ function parseFee(tags: OverpassTags): "free" | "paid" | null {
   return null;
 }
 
+function is24h(openingHours?: string): boolean {
+  if (!openingHours) return false;
+  return /\b24\s*\/\s*7\b/.test(openingHours);
+}
+
+function hasLimitedHours(openingHours?: string): boolean {
+  if (!openingHours) return false;
+  return !is24h(openingHours);
+}
+
 function toSpot(
   el: OverpassElement,
   index: number,
@@ -64,14 +80,33 @@ function toSpot(
 
   const distKm = haversineKm(originLat, originLng, lat, lng);
   const features: string[] = [];
-  if (tags.parking === "multi-storey" || tags.parking === "underground") {
+  // Real OSM tags only — never invent amenities.
+  if (
+    tags.parking === "multi-storey" ||
+    tags.parking === "underground" ||
+    tags.parking === "sheds" ||
+    tags.parking === "carports" ||
+    tags.covered === "yes"
+  ) {
     features.push("Covered");
   }
+  if (parseCapacity(tags["capacity:charging"]) != null) features.push("EV");
+  if (
+    tags.wheelchair === "yes" ||
+    tags.wheelchair === "designated" ||
+    parseCapacity(tags["capacity:disabled"]) != null
+  ) {
+    features.push("Handicap");
+  }
+  if (tags.supervised === "yes") features.push("Secure");
+  if (is24h(tags.opening_hours)) features.push("24h");
+  else if (hasLimitedHours(tags.opening_hours)) features.push("LimitedHours");
 
   return {
     id: 1000 + index,
     name,
     distance: formatDistance(distKm),
+    distKm,
     walkTime: walkTimeFor(distKm),
     hourly: "—",
     // No real price feed: live spots sort after any priced spots under "Cheapest".

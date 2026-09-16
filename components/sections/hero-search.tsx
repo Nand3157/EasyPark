@@ -3,8 +3,12 @@
 import { Loader2, MapPin, Search, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FILTERS, POPULAR_CITIES } from "@/lib/parking";
+import type { Venue } from "@/lib/venues";
+import type { RecentSearch } from "@/lib/recent";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/reveal";
+import { VenueChips } from "./venue-chips";
+import { RecentSearches } from "./recent-searches";
 
 interface HeroSearchProps {
   searchQuery: string;
@@ -15,6 +19,10 @@ interface HeroSearchProps {
   currentLocationName: string;
   activeFilter: string;
   onSelectFilter: (filter: string) => void;
+  venuesOnPick: (v: Venue) => void;
+  recents: RecentSearch[];
+  onRecentPick: (r: RecentSearch) => void;
+  onRecentClear: () => void;
 }
 
 /** Hero + search unit: headline, destination search, city shortcuts, filters. */
@@ -27,6 +35,10 @@ export function HeroSearch({
   currentLocationName,
   activeFilter,
   onSelectFilter,
+  venuesOnPick,
+  recents,
+  onRecentPick,
+  onRecentClear,
 }: HeroSearchProps) {
   return (
     <>
@@ -133,6 +145,10 @@ export function HeroSearch({
             {searchError}
           </div>
         )}
+
+        <RecentSearches recents={recents} onPick={onRecentPick} onClear={onRecentClear} />
+
+        <VenueChips onPick={venuesOnPick} />
 
         <p className="t-secondary mt-5 flex items-center justify-center gap-2 text-sm">
           <MapPin size={16} className="animate-pulse text-blue-500" aria-hidden />

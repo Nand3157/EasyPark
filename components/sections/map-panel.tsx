@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Accessibility, Clock, Loader2, LocateFixed, TrendingUp, Warehouse, X, Zap } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import type { ChargingStation } from "@/lib/charging";
 import { parkingSearchUrl } from "@/lib/maps";
 import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion/reveal";
@@ -22,6 +23,7 @@ interface MapPanelProps {
   mapCenter: [number, number];
   mapZoom: number;
   filteredSpots: ParkingSpot[];
+  chargingStations: ChargingStation[];
   selectedSpotId: number | null;
   onSelectSpot: (id: number | null) => void;
   locationName: string;
@@ -45,6 +47,7 @@ export function MapPanel({
   mapCenter,
   mapZoom,
   filteredSpots,
+  chargingStations,
   selectedSpotId,
   onSelectSpot,
   locationName,
@@ -66,6 +69,7 @@ export function MapPanel({
             mapCenter={mapCenter}
             mapZoom={mapZoom}
             filteredSpots={filteredSpots}
+            chargingStations={chargingStations}
             selectedSpotId={selectedSpotId}
             setSelectedSpotId={onSelectSpot}
           />
@@ -163,13 +167,20 @@ export function MapPanel({
           <div className="pointer-events-none absolute right-4 bottom-4 left-4 z-[400] flex justify-center md:right-6 md:bottom-6 md:left-6">
             <p className="pointer-events-auto flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-slate-950/10 bg-white/90 px-5 py-2.5 text-xs font-medium text-slate-700 shadow-xl backdrop-blur-md md:text-sm dark:border-white/15 dark:bg-slate-950/70 dark:text-white/90">
               {dataSource === "live" && filteredSpots.length > 0 ? (
-                <span>
-                  Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
-                  real parking lots near{" "}
-                  <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
-                    {locationName}
-                  </strong>{" "}
-                  · OpenStreetMap
+                <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                  <span>
+                    Showing <strong className="text-slate-950 dark:text-white">{filteredSpots.length}</strong>{" "}
+                    lots near{" "}
+                    <strong className="max-w-40 truncate text-slate-950 sm:max-w-none dark:text-white">
+                      {locationName}
+                    </strong>{" "}
+                    · OSM
+                  </span>
+                  {chargingStations.length > 0 && (
+                    <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                      ⚡ {chargingStations.length} EV chargers
+                    </span>
+                  )}
                 </span>
               ) : (
                 <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">

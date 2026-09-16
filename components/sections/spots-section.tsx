@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import type { CrowdReport, CrowdLevel } from "@/lib/crowd";
 import { parkingSearchUrl } from "@/lib/maps";
 import { scrollToSection } from "@/lib/utils";
 import { Reveal } from "@/components/motion/reveal";
@@ -15,10 +16,13 @@ interface SpotsSectionProps {
   selectedId: number | null;
   favorites: number[];
   reservedIds: number[];
+  crowdMap: Record<string, CrowdReport>;
+  crowdNow: number;
   onToggleFavorite: (id: number) => void;
   onFocusSpot: (spot: ParkingSpot) => void;
   onReserve: (id: number) => void;
   onStartSession: (spot: ParkingSpot) => void;
+  onCrowdReport: (spotId: number, level: CrowdLevel) => void;
   dataSource: "demo" | "live" | "demo-fallback";
 }
 
@@ -34,6 +38,9 @@ export function SpotsSection({
   onFocusSpot,
   onReserve,
   onStartSession,
+  onCrowdReport,
+  crowdMap,
+  crowdNow,
   dataSource,
 }: SpotsSectionProps) {
   const city = locationName.split(",")[0];
@@ -89,10 +96,13 @@ export function SpotsSection({
                   isSelected={selectedId === spot.id}
                   isFavorite={favorites.includes(spot.id)}
                   isReserved={reservedIds.includes(spot.id)}
+                  crowdReport={crowdMap[String(spot.id)]}
+                  crowdNow={crowdNow}
                   onToggleFavorite={() => onToggleFavorite(spot.id)}
                   onFocus={() => onFocusSpot(spot)}
                   onReserve={() => onReserve(spot.id)}
                   onStartSession={() => onStartSession(spot)}
+                  onCrowdReport={(level) => onCrowdReport(spot.id, level)}
                 />
               </li>
             </Reveal>

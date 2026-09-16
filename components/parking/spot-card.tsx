@@ -3,20 +3,25 @@
 import * as React from "react";
 import { Accessibility, AlarmClock, BatteryCharging, Check, Clock, Globe, Heart, LocateFixed, MapPin, Navigation, Share2, Shield, Star, Warehouse } from "lucide-react";
 import type { ParkingSpot } from "@/lib/parking";
+import type { CrowdLevel, CrowdReport } from "@/lib/crowd";
 import { buildSpotUrl, copyText } from "@/lib/share";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CrowdMeter } from "./crowd-meter";
 
 interface SpotCardProps {
   spot: ParkingSpot;
   isSelected: boolean;
   isFavorite: boolean;
   isReserved: boolean;
+  crowdReport?: CrowdReport;
+  crowdNow: number;
   onToggleFavorite: () => void;
   onFocus: () => void;
   onReserve: () => void;
   onStartSession: () => void;
+  onCrowdReport: (level: CrowdLevel) => void;
 }
 
 /** Human label for the OSM fee tag. Unknown stays unknown — never guessed. */
@@ -33,7 +38,7 @@ const FEATURE_ICONS = [  { key: "EV", label: "EV charging", Icon: BatteryChargin
 ];
 
 /** Single parking listing: identity, pricing, availability, features, actions. */
-export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFavorite, onFocus, onReserve, onStartSession }: SpotCardProps) {
+export function SpotCard({ spot, isSelected, isFavorite, isReserved, crowdReport, crowdNow, onToggleFavorite, onFocus, onReserve, onStartSession, onCrowdReport }: SpotCardProps) {
   const isLive = spot.source === "live";
   const lowAvailability = spot.available < 10;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
@@ -165,7 +170,7 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
       )}
 
       {spot.features.length > 0 && (
-        <ul aria-label={`${spot.name} amenities`} className="mb-6 flex flex-wrap gap-2">
+        <ul aria-label={`${spot.name} amenities`} className="mb-4 flex flex-wrap gap-2">
           {FEATURE_ICONS.filter((f) => spot.features.includes(f.key)).map(({ key, label, Icon, tone }) => (
             <li key={key} title={label} className={cn("rounded-lg p-2", tone)}>
               <Icon size={16} aria-hidden />
@@ -174,6 +179,10 @@ export function SpotCard({ spot, isSelected, isFavorite, isReserved, onToggleFav
           ))}
         </ul>
       )}
+
+      <div className="mb-5">
+        <CrowdMeter report={crowdReport} now={crowdNow} onReport={onCrowdReport} />
+      </div>
 
       <div className={cn("mt-auto grid gap-2", isLive ? "grid-cols-3" : "grid-cols-1 sm:grid-cols-3")}>
         <Button variant="outline" size="sm" onClick={onFocus} className="px-2">

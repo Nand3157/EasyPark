@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Navigation, ExternalLink } from 'lucide-react';
 import type { ParkingSpot } from '@/lib/parking';
+import type { ChargingStation } from '@/lib/charging';
 
 // Parent (`MapPanel`) already loads this via `next/dynamic(ssr:false)`,
 // so static Leaflet imports are SSR-safe here and keep full types.
@@ -14,6 +15,7 @@ interface ParkingMapProps {
   mapCenter: [number, number];
   mapZoom: number;
   filteredSpots: ParkingSpot[];
+  chargingStations: ChargingStation[];
   selectedSpotId: number | null;
   setSelectedSpotId: (id: number | null) => void;
 }
@@ -69,10 +71,39 @@ function markerIcon(isSelected: boolean, available: number) {
   });
 }
 
+function evIcon() {
+  return L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: `
+        <div style="
+          background: #f59e0b;
+          color: #0f172a;
+          border: 2px solid #ffffff;
+          box-shadow: 0 0 14px #f59e0b88;
+          border-radius: 9999px;
+          padding: 4px 10px;
+          font-weight: 700;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+          transform: translate(-50%, -100%);
+        ">
+          ⚡ EV
+        </div>
+      `,
+    iconSize: [60, 30],
+    iconAnchor: [30, 30],
+    popupAnchor: [0, -28],
+  });
+}
+
 export default function ParkingMap({
   mapCenter,
   mapZoom,
   filteredSpots,
+  chargingStations,
   selectedSpotId,
   setSelectedSpotId,
 }: ParkingMapProps) {
@@ -84,6 +115,8 @@ export default function ParkingMap({
     }
     return cache;
   }, [filteredSpots, selectedSpotId]);
+
+  const evDivIcon = useMemo(() => evIcon(), []);
 
   return (
     <MapContainer
@@ -141,6 +174,39 @@ export default function ParkingMap({
                 <Navigation size={13} className="text-white" />
                 <span className="font-bold !text-white">Open in Google Maps</span>
                 <ExternalLink size={12} className="text-white/80" />
+              </a>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+      {chargingStations.map((ev) => (
+        <Marker key={`ev-${ev.id}`} position={[ev.lat, ev.lng]} icon={evDivIcon}>
+          <Popup>
+            <div className="min-w-[210px] space-y-1.5 rounded-2xl border border-amber-600/25 bg-slate-900 p-4 text-white shadow-2xl">
+              <h4 className="text-sm leading-snug font-bold text-white">{ev.name}</h4>
+              <p className="text-xs font-medium text-amber-300">⚡ EV Charging · {ev.distance} · {ev.walkTime} walk</p>
+              <p className="text-xs text-slate-300">
+                {ev.operator ? `${ev.operator} · ` : ""}
+                {ev.connectors.length ? ev.connectors.join(", ") : "Connector info unavailable"}
+                {ev.fee ? ` · ${ev.fee === "free" ? "Free" : "Paid"}` : ""}
+              </p>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2.5 text-center text-xs font-bold !text-white no-underline shadow-md transition-colors hover:bg-amber-500"
+              >
+                <Navigation size={13} className="text-white" />
+                <span className="font-bold !text-white">Charger directions</span>
+                <ExternalLink size={12} className="text-white/80" />
+              </a>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=EV+charging+near+${ev.lat},${ev.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full justify-center text-[11px] font-semibold text-amber-300 underline-offset-4 hover:underline"
+              >
+                More chargers on Google Maps
               </a>
             </div>
           </Popup>

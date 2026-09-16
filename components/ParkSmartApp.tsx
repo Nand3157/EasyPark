@@ -14,16 +14,22 @@ import { Closing } from './sections/closing';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isNumberArray, isTheme, usePersistentState } from '@/hooks/use-persistent-state';
 import { useParkingSession } from '@/hooks/use-parking-session';
+import { useCrowd } from '@/hooks/use-crowd';
 import { SessionBanner } from '@/components/parking/session-banner';
 import {
   PRESET_LOCATIONS,
   applySpotFilter,
   type ParkingSpot,
 } from '@/lib/parking';
+import { haversineKm } from '@/lib/geo';
 import { scrollToSection } from '@/lib/utils';
 import { buildSpotUrl, parseSpotParams } from '@/lib/share';
 import { fetchLiveParking } from '@/lib/overpass';
+import { fetchChargingStations, type ChargingStation } from '@/lib/charging';
 import { isBlockedError, resolveUserPosition, type LocateOutcome } from '@/lib/location';
+import { CACHE_KEY, isLiveCache, isRecentList, MAX_RECENT, RECENT_KEY, type LiveCache, type RecentSearch } from '@/lib/recent';
+// Venue type used via HeroSearch prop — keep import for rsc compatibility
+import type { Venue } from '@/lib/venues';
 
 export default function EasyParkApp() {
   const [theme, setTheme] = usePersistentState<'dark' | 'light'>('easypark:theme', 'dark', isTheme);
@@ -46,6 +52,11 @@ export default function EasyParkApp() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<number | null>(sharedParams?.spotId ?? null);
   const [dataSource, setDataSource] = useState<"demo" | "live" | "demo-fallback">("live");
+  const [chargingStations, setChargingStations] = useState<ChargingStation[]>([]);
+  const { crowdMap, report: reportCrowd, now: crowdNow } = useCrowd();
+  const [recentSearches, setRecentSearches] = usePersistentState<RecentSearch[]>(RECENT_KEY, [], isRecentList);
+  const [liveCache] = usePersistentState<LiveCache | null>(CACHE_KEY, null, isLiveCache);
+  const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
 
   // Heavy canvas ambience runs on desktop only, and never under reduced motion.
   const isMobile = useIsMobile();
@@ -86,22 +97,59 @@ export default function EasyParkApp() {
     scrollToSection("spots");
   };
 
-  // Load spots for an area: real OpenStreetMap lots only.
-  // No fake inventory — on failure we show empty + a Google Maps CTA.
-  const loadSpots = useCallback(async (lat: number, lng: number, label: string, zoom = 14) => {
+  const pushRecent = useCallback((query: string, label: string, lat: number, lng: number) => {
+    if (!query.trim()) return;
+    setRecentSearches((prev) => {
+      const next: RecentSearch[] = [{ query: query.trim(), label, lat, lng, at: Date.now() }, ...prev.filter((r) => r.query.toLowerCase() !== query.trim().toLowerCase())];
+      return next.slice(0, MAX_RECENT);
+    });
+  }, [setRecentSearches]);
+
+  // Load spots for an area: real OpenStreetMap lots + EV chargers together.
+  // No fake inventory — on failure we try a cached result, else empty + Google CTA.
+  const loadSpots = useCallback(async (lat: number, lng: number, label: string, zoom = 14, queryForRecent?: string) => {
     setMapCenter([lat, lng]);
     setMapZoom(zoom);
     setCurrentLocationName(label);
+    setOfflineNotice(null);
+    if (queryForRecent) pushRecent(queryForRecent, label, lat, lng);
     try {
-      const live = await fetchLiveParking(lat, lng);
+      const [live, chargers] = await Promise.all([
+        fetchLiveParking(lat, lng),
+        fetchChargingStations(lat, lng),
+      ]);
       setParkingData(live);
+      setChargingStations(chargers);
       setDataSource("live");
+      try {
+        const cache: LiveCache = { lat, lng, label, spots: live, chargers, at: Date.now() };
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      } catch {
+        // Cache is best-effort.
+      }
     } catch (err) {
       console.error("Live parking lookup failed:", err);
+      // Offline fallback: reuse cached live result if it's nearby (≈ within 2km).
+      try {
+        const raw = window.localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const cached = JSON.parse(raw) as LiveCache;
+          if (isLiveCache(cached) && haversineKm(cached.lat, cached.lng, lat, lng) < 2) {
+            setParkingData(cached.spots);
+            setChargingStations(cached.chargers ?? []);
+            setDataSource("live");
+            setOfflineNotice(`Offline — showing cached results from ${new Date(cached.at).toLocaleTimeString()} for ${cached.label}.`);
+            return;
+          }
+        }
+      } catch {
+        // Ignore cache read errors.
+      }
       setParkingData([]);
+      setChargingStations([]);
       setDataSource("demo-fallback");
     }
-  }, []);
+  }, [pushRecent]);
 
   const handleSearch = async (queryToSearch: string) => {
     const trimmed = queryToSearch.trim();
@@ -115,7 +163,7 @@ export default function EasyParkApp() {
     const presetKey = Object.keys(PRESET_LOCATIONS).find(key => lower.includes(key));
     if (presetKey) {
       const loc = PRESET_LOCATIONS[presetKey];
-      await loadSpots(loc.lat, loc.lng, loc.name);
+      await loadSpots(loc.lat, loc.lng, loc.name, 14, trimmed);
       setIsSearching(false);
       return;
     }
@@ -131,7 +179,7 @@ export default function EasyParkApp() {
         const lat = parseFloat(item.lat);
         const lng = parseFloat(item.lon);
         const displayName = item.display_name || trimmed;
-        await loadSpots(lat, lng, displayName);
+        await loadSpots(lat, lng, displayName, 14, trimmed);
       } else {
         setSearchError(`No coordinates found for "${trimmed}". Try "Vadodara", "Mumbai" or "London".`);
       }
@@ -244,12 +292,23 @@ export default function EasyParkApp() {
             currentLocationName={currentLocationName}
             activeFilter={activeFilter}
             onSelectFilter={setActiveFilter}
+            venuesOnPick={(v) => void loadSpots(v.lat, v.lng, `${v.name}, ${v.city}`, 15, v.name)}
+            recents={recentSearches}
+            onRecentPick={(r) => void loadSpots(r.lat, r.lng, r.label, 14, r.query)}
+            onRecentClear={() => setRecentSearches([])}
           />
+
+          {offlineNotice && (
+            <div role="status" className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-center text-sm font-medium text-amber-700 dark:text-amber-300">
+              {offlineNotice}
+            </div>
+          )}
 
           <MapPanel
             mapCenter={mapCenter}
             mapZoom={mapZoom}
             filteredSpots={filteredSpots}
+            chargingStations={chargingStations}
             selectedSpotId={selectedSpotId}
             onSelectSpot={setSelectedSpotId}
             locationName={currentLocationName}
@@ -260,6 +319,39 @@ export default function EasyParkApp() {
             dataSource={dataSource}
           />
 
+          {liveCache && dataSource === "demo-fallback" && haversineKm(liveCache.lat, liveCache.lng, mapCenter[0], mapCenter[1]) < 2 && (
+            <div role="status" className="mb-6 rounded-3xl border border-slate-950/10 bg-white/70 px-5 py-3 text-center text-sm dark:border-white/10 dark:bg-white/5">
+              <span className="t-secondary">Showing last cached results for </span>
+              <strong className="text-slate-950 dark:text-white">{liveCache.label}</strong>
+              <span className="t-secondary"> from {new Date(liveCache.at).toLocaleTimeString()} — </span>
+              <a href={`https://www.google.com/maps/search/?api=1&query=parking+near+${liveCache.lat},${liveCache.lng}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 underline-offset-4 hover:underline dark:text-blue-400">open in Google Maps</a>
+            </div>
+          )}
+
+          {chargingStations.length > 0 && (
+            <section aria-label="EV chargers nearby" className="mb-10">
+              <div className="mb-4 flex items-baseline justify-between gap-4">
+                <h2 className="text-lg font-bold text-slate-950 dark:text-white">⚡ EV charging nearby</h2>
+                <span className="t-tertiary text-xs">{chargingStations.length} real stations · OSM{chargingStations[0]?.source === "ocm" ? " + OpenChargeMap" : ""}</span>
+              </div>
+              <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {chargingStations.slice(0, 6).map((ev) => (
+                  <li key={ev.id} className="surface flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">{ev.name}</p>
+                      <p className="t-tertiary text-xs">{ev.distance} · {ev.walkTime} walk{ev.operator ? ` · ${ev.operator}` : ""}</p>
+                      {ev.connectors.length > 0 && <p className="t-tertiary text-xs truncate">{ev.connectors.join(", ")}</p>}
+                    </div>
+                    <a href={`https://www.google.com/maps/dir/?api=1&destination=${ev.lat},${ev.lng}`} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600">Directions</a>
+                  </li>
+                ))}
+              </ul>
+              {chargingStations.length > 6 && (
+                <p className="t-tertiary mt-3 text-center text-xs">+ {chargingStations.length - 6} more on the map (orange ⚡ markers)</p>
+              )}
+            </section>
+          )}
+
           <SpotsSection
             spots={filteredSpots}
             locationName={currentLocationName}
@@ -268,10 +360,13 @@ export default function EasyParkApp() {
             selectedId={selectedSpotId}
             favorites={favorites}
             reservedIds={reservedIds}
+            crowdMap={crowdMap}
+            crowdNow={crowdNow}
             onToggleFavorite={toggleFavorite}
             onFocusSpot={focusSpot}
             onReserve={reserveSpot}
             onStartSession={startParkingSession}
+            onCrowdReport={reportCrowd}
             dataSource={dataSource}
           />
 

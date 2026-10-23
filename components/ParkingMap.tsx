@@ -11,6 +11,13 @@ import type { ChargingStation } from '@/lib/charging';
 // so static Leaflet imports are SSR-safe here and keep full types.
 // Leaflet CSS is imported once in `app/globals.css`.
 
+// CARTO basemaps require a free API key from https://carto.com/basemaps/apikey/
+// Set NEXT_PUBLIC_CARTO_KEY in .env.local; falls back to OSM tiles without it.
+const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY;
+const TILE_URL = CARTO_KEY
+  ? `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`
+  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
 interface ParkingMapProps {
   mapCenter: [number, number];
   mapZoom: number;
@@ -130,7 +137,7 @@ export default function ParkingMap({
       <MapController center={mapCenter} zoom={mapZoom} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+        url={TILE_URL}
         maxZoom={19}
       />
       {filteredSpots.map((spot) => (
